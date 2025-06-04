@@ -1,0 +1,22 @@
+2025-05-22 17:10:28.504128: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2025-05-22 17:10:29.839183: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
+args=Namespace(chains=[3], eager=0, fp=64, fse=1, hmcleapfrog=10, hmcthin=0, input='init_file.rds', output='post_chain03_file.rds', profile=0, rngseed=0, samples=100, thin=10, tnlib='tf', transient=1000, updbe=0, verbose=100)
+working directory /maps/projects/cmec/people/bhr597/projects/hmsc-danishbirds/tmp_rds/2025-05-22_16-39-28
+2025-05-22 17:10:38.405143: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1639] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 79037 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-80GB, pci bus id: 0000:81:00.0, compute capability: 8.0
+2025-05-22 17:10:38.856842: I tensorflow/core/util/cuda_solvers.cc:179] Creating GpuSolver handles for stream 0x558245559640
+sampling
+sampling
+/opt/software/anaconda3/2021.05/lib/python3.8/site-packages/scipy/__init__.py:138: UserWarning: A NumPy version >=1.16.5 and <1.23.0 is required for this version of SciPy (detected version 1.24.3)
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion} is required for this version of "
+Initializing TF graph
+retracing
+TF graph initialized in 11.7 sec
+Running TF Gibbs sampler for 1 chains with indices [3]
+
+ Computing chain 3
+iteration 100 / 2000 transientiteration 200 / 2000 transientiteration 300 / 2000 transientiteration 400 / 2000 transientiteration 500 / 2000 transientiteration 600 / 2000 transientiteration 700 / 2000 transientiteration 800 / 2000 transientiteration 900 / 2000 transientiteration 1000 / 2000 transientiteration 1100 / 2000 saving 10iteration 1200 / 2000 saving 20iteration 1300 / 2000 saving 30iteration 1400 / 2000 saving 40iteration 1500 / 2000 saving 50iteration 1600 / 2000 saving 60iteration 1700 / 2000 saving 70iteration 1800 / 2000 saving 80iteration 1900 / 2000 saving 90iteration 2000 / 2000 saving 100
+ 1 chains completed in 1108.2 sec
+
+ Whole Gibbs sampler elapsed 1108.2
+done

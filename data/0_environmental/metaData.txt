@@ -1,0 +1,1 @@
+Synthesized using ~/Library/CloudStorage/Box-Box/PhD/projects/hmsc-danishbirds/scripts/0_environmental/extractingGridData.R on 2025-05-15

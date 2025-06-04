@@ -1,0 +1,15 @@
+$nChains
+[1] 4
+
+$thin
+[1] 10
+
+$nSamples
+[1] 2000
+
+$transient
+[1] 20000
+
+$verbose
+[1] 100
+
