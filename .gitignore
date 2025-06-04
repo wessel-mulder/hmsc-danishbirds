@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 .DS_Store
+hmsc-danishbirds.Rproj
 examples/
 writing/
 hmsc-hpc-main/
