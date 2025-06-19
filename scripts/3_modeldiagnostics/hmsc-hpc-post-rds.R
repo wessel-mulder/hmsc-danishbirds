@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-input <- 'tmp_rds/2025-05-22_16-39-28'
+input <- 'tmp_rds/2025-06-04_15-24-56'
 
 # GETTING STARTED ---------------------------------------------------------
 #library(RColorBrewer,lib="~/Rlibs")
@@ -13,8 +12,8 @@ library(Hmsc)
 library(jsonify)
 library(knitr)
 library(corrplot)
-=======
-input <- '/home/bhr597/home/projects/hmsc-danishbirds/tmp_rds/2025-05-22_16-39-28'
+
+#input <- '/home/bhr597/home/projects/hmsc-danishbirds/tmp_rds/2025-05-22_16-39-28'
 
 # GETTING STARTED ---------------------------------------------------------
 library(RColorBrewer,lib="~/Rlibs")
@@ -25,32 +24,41 @@ library(ape,lib="~/Rlibs")
 library(dplyr,lib="~/Rlibs")
 library(Hmsc,lib="~/Rlibs")
 
->>>>>>> 2d629c8d347170c0dea1f64a425d2a60dc98a8a5
 # GETTING STARTED --------------------------------------------------------
 # load unfitted object
 m <- readRDS(file.path(input,'m_object.rds'))
+summary(m)
+# load params 
 params <- readRDS(file.path(input,'params.rds'))
-
-<<<<<<< HEAD
 nChains <- params$nChains
-=======
+nSamples <- params$nSamples
+thin <- params$thin
+transient <- params$transient
 
->>>>>>> 2d629c8d347170c0dea1f64a425d2a60dc98a8a5
 # loading the chains 
 chainList = vector("list", nChains)
 for(cInd in 1:nChains){
     chain_file_path = file.path(input, sprintf("post_chain%.2d_file.rds", cInd-1))
-    chainList[[cInd]] = from_json(readRDS(file = chain_file_path)[[1]])[[1]]
-}
+    print(chain_file_path)
+    if(file.exists(chain_file_path)) {
+      chainList[[cInd]] = from_json(readRDS(file = chain_file_path)[[1]])[[1]]
+      }
+    }
 
-<<<<<<< HEAD
+# check if any chains failed 
+# and remove 
+for(i in chainList){
+  print(is.null(i))
+}
+chainList_sep <- chainList[c(1,2,4)]
+
 # import fitted model 
-fitSepTF = importPosteriorFromHPC(m, chainList, 100, 10, 1000)
+fitSepTF = importPosteriorFromHPC(m, chainList_sep, nSamples, thin, transient)
 
 
 # CHECKING CONVERGENCE ----------------------------------------------------
 # Convert model output to coda format for MCMC diagnostics
-mpost <- convertToCodaObject(fitSepTF)
+mpost <- convertToCodaObject(fitSepTF,start=1)
 
 # Get number of species (used for dimensions if needed)
 ns <- ncol(fitSepTF$Y)
@@ -93,14 +101,22 @@ mixing <- list(
   es.gamma = es.gamma, ge.gamma = ge.gamma,
   es.rho = es.rho, ge.rho = ge.rho,
   es.V = es.V, ge.V = ge.V,
-  es.alpha = es.alpha, ge.alpha = ge.alpha,
-  es.omega = es.omega, ge.omega = ge.omega
+  es.alpha = es.alpha, ge.alpha = ge.alpha #,
+  #es.omega = es.omega, ge.omega = ge.omega
 )
+
+summary(mpost)
+
+saveRDS(mixing,file=file.path(input,'post_estimates.rds'))
+saveRDS(mpost,file=file.path(input,'mpost.rds'))
+saveRDS(fitSepTF,file=file.path(input,'fitSepTF.rds'))
+
+
 
 # ---- Optional: Trace plot setup ----
 # Visual inspection (just a few Beta params as example)
 par(mfrow = c(2, 2))
-traceplot(mpost$Rho)
+traceplot(mpost$Gamma)
 
 
 # PLOTTING ACROSS GRADIENTS -----------------------------------------------
@@ -114,6 +130,9 @@ plotGradient(fitSepTF, Gradient, pred=predY, measure="S", showData = TRUE)
 
 
 # LOOKING AT PARAMETERS ---------------------------------------------------
+# clear out memory if necessary 
+rm(chainList)
+rm(chainList_sep)
 VP_cluster <- computeVariancePartitioning(fitSepTF,
                                   group = c(rep(1,6),rep(2,10)),
                                   groupnames = c('climate','landuse'))
@@ -184,11 +203,10 @@ guild_df <- guild %>%
 guild_df$guild <- as.factor(guild_df$guild)
 
 
-=======
+
 fitSepTF = importPosteriorFromHPC(m, chainList, 100, 10, 1000)
 
 
->>>>>>> 2d629c8d347170c0dea1f64a425d2a60dc98a8a5
 
 input <- '/home/bhr597/home/projects/hmsc-danishbirds/tmp_rds/2025-05-22_16-39-28'
 
