@@ -1,38 +1,0 @@
-2025-06-04 15:18:27.892478: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
-To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-2025-06-04 15:18:32.665669: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
-args=Namespace(chains=None, eager=0, fp=64, fse=1, hmcleapfrog=10, hmcthin=0, input='init_file.rds', output='post_chain00_file.rds', profile=0, rngseed=0, samples=2, thin=1, tnlib='tf', transient=0, updbe=0, verbose=1)
-working directory /maps/projects/cmec/people/bhr597/projects/hmsc-danishbirds/tmp_rds/2025-06-04_15-16-06
-2025-06-04 15:18:49.042431: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1639] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 79035 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-80GB, pci bus id: 0000:01:00.0, compute capability: 8.0
-2025-06-04 15:18:50.162052: I tensorflow/core/util/cuda_solvers.cc:179] Creating GpuSolver handles for stream 0x5585b2d82510
-sampling
-sampling
-sampling
-sampling
-sampling
-/opt/software/anaconda3/2021.05/lib/python3.8/site-packages/scipy/__init__.py:138: UserWarning: A NumPy version >=1.16.5 and <1.23.0 is required for this version of SciPy (detected version 1.24.3)
-  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion} is required for this version of "
-Initializing TF graph
-retracing
-iteration 1 / 2 transientiteration 2 / 2 saving 1TF graph initialized in 12.8 sec
-Running TF Gibbs sampler for 4 chains with indices [0, 1, 2, 3]
-
- Computing chain 0
-iteration 1 / 2 saving 1iteration 2 / 2 saving 2
- 1 chains completed in 0.1 sec
-
- Computing chain 1
-iteration 1 / 2 saving 1iteration 2 / 2 saving 2
- 2 chains completed in 0.2 sec
-
- Computing chain 2
-iteration 1 / 2 saving 1iteration 2 / 2 saving 2
- 3 chains completed in 0.4 sec
-
- Computing chain 3
-iteration 1 / 2 saving 1iteration 2 / 2 saving 2
- 4 chains completed in 0.5 sec
-
- Whole Gibbs sampler elapsed 0.5
-done
-/var/spool/slurm//job37315417/slurm_script: line 27: --chain: command not found

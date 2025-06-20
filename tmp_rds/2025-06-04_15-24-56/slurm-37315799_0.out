@@ -1,9 +1,0 @@
-2025-06-04 15:31:16.270827: I tensorflow/core/platform/cpu_feature_guard.cc:182] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
-To enable the following instructions: AVX2 FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
-2025-06-04 15:31:17.928358: W tensorflow/compiler/tf2tensorrt/utils/py_utils.cc:38] TF-TRT Warning: Could not find TensorRT
-args=Namespace(chains=[0], eager=0, fp=64, fse=1, hmcleapfrog=10, hmcthin=0, input='init_file.rds', output='post_chain00_file.rds', profile=0, rngseed=0, samples=2000, thin=10, tnlib='tf', transient=20000, updbe=0, verbose=100)
-working directory /maps/projects/cmec/people/bhr597/projects/hmsc-danishbirds/tmp_rds/2025-06-04_15-24-56
-2025-06-04 15:31:25.041131: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1639] Created device /job:localhost/replica:0/task:0/device:GPU:0 with 79035 MB memory:  -> device: 0, name: NVIDIA A100-SXM4-80GB, pci bus id: 0000:01:00.0, compute capability: 8.0
-2025-06-04 15:31:26.258444: I tensorflow/core/util/cuda_solvers.cc:179] Creating GpuSolver handles for stream 0x56447d35d040
-sampling
-sampling

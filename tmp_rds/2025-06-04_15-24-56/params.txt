@@ -1,5 +1,0 @@
-nChains=4
-thin=10
-nSamples=2000
-transient=20000
-verbose=100
