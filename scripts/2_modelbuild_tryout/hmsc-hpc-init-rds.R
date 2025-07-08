@@ -15,31 +15,23 @@ params <- list(
     verbose = verbose
 )
 # GETTING STARTED ---------------------------------------------------------
-# python = file.path(getwd(), 'hmsc-hpc-main',"hmsc-venv", "bin", "python3.11")
+if (interactive() && Sys.getenv("RSTUDIO") == "1") {
+  message("Running in RStudio")
+  library(Hmsc)
+  library(jsonify)
+  library(knitr)
+  library(corrplot)
+} else {
+  message("Running from terminal or non-interactive environment")
+  library(RColorBrewer,lib="~/Rlibs")
+  library(farver,lib="~/Rlibs")
+  library(scales,lib="~/Rlibs")
+  library(jsonify,lib="~/Rlibs")
+  library(ape,lib="~/Rlibs")
+  library(dplyr,lib="~/Rlibs")
+  library(Hmsc,lib="~/Rlibs")
+}
 
-# get python running 
-#package_path = file.path('hmsc-hpc-main/')
-#system2(python, "-m pip install --upgrade pip")
-#system2(python, paste("-m pip install", shQuote(package_path)))
-
-# check tensorflow 
-#Sys.setenv(TF_CPP_MIN_LOG_LEVEL=3)
-#system2(python, "-c \"import tensorflow as tf; print(tf.constant(1))\"")
-#system2(python, "-c \"import hmsc\"")
-
-
-# Or from a local source folder
-#library(devtools)
-#devtools::install_local("HMSC-master/",force=T)
-# check if succesfully loaded
-#install.packages('farver',lib="~/Rlibs")
-library(RColorBrewer,lib="~/Rlibs")
-library(farver,lib="~/Rlibs")
-library(scales,lib="~/Rlibs")
-library(jsonify,lib="~/Rlibs")
-library(ape,lib="~/Rlibs")
-library(dplyr,lib="~/Rlibs")
-library(Hmsc,lib="~/Rlibs")
 summary(TD)
 
 # LOADING DATA -----------------------------------------------------

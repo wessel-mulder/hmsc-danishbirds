@@ -1,30 +1,25 @@
 input <- 'tmp_rds/2025-06-04_15-24-56'
+subset_sppairs <- T
 
 # GETTING STARTED ---------------------------------------------------------
-#library(RColorBrewer,lib="~/Rlibs")
-#library(farver,lib="~/Rlibs")
-#library(scales,lib="~/Rlibs")
-#library(jsonify,lib="~/Rlibs")
-#library(ape,lib="~/Rlibs")
-#library(dplyr,lib="~/Rlibs")
-#library(Hmsc,lib="~/Rlibs")
-library(Hmsc)
-library(jsonify)
-library(knitr)
-library(corrplot)
+if (interactive() && Sys.getenv("RSTUDIO") == "1") {
+  message("Running in RStudio")
+  library(Hmsc)
+  library(jsonify)
+  library(knitr)
+  library(corrplot)
+} else {
+  message("Running from terminal or non-interactive environment")
+  library(RColorBrewer,lib="~/Rlibs")
+  library(farver,lib="~/Rlibs")
+  library(scales,lib="~/Rlibs")
+  library(jsonify,lib="~/Rlibs")
+  library(ape,lib="~/Rlibs")
+  library(dplyr,lib="~/Rlibs")
+  library(Hmsc,lib="~/Rlibs")
+}
 
-#input <- '/home/bhr597/home/projects/hmsc-danishbirds/tmp_rds/2025-05-22_16-39-28'
-
-# GETTING STARTED ---------------------------------------------------------
-library(RColorBrewer,lib="~/Rlibs")
-library(farver,lib="~/Rlibs")
-library(scales,lib="~/Rlibs")
-library(jsonify,lib="~/Rlibs")
-library(ape,lib="~/Rlibs")
-library(dplyr,lib="~/Rlibs")
-library(Hmsc,lib="~/Rlibs")
-
-# GETTING STARTED --------------------------------------------------------
+# LOADING DATA --------------------------------------------------------
 # load unfitted object
 m <- readRDS(file.path(input,'m_object.rds'))
 summary(m)
@@ -45,16 +40,9 @@ for(cInd in 1:nChains){
       }
     }
 
-# check if any chains failed 
-# and remove 
-for(i in chainList){
-  print(is.null(i))
-}
-chainList_sep <- chainList[c(1,2,4)]
+filteredList <- chainList[!sapply(chainList, is.null)]
 
-# import fitted model 
-fitSepTF = importPosteriorFromHPC(m, chainList_sep, nSamples, thin, transient)
-
+fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 
 # CHECKING CONVERGENCE ----------------------------------------------------
 # Convert model output to coda format for MCMC diagnostics
@@ -67,18 +55,38 @@ ns <- ncol(fitSepTF$Y)
 # Beta: species responses to environment
 es.beta <- effectiveSize(mpost$Beta)
 ge.beta <- gelman.diag(mpost$Beta, multivariate = F)$psrf
+by = 100
+hist(es.beta,
+     breaks = seq(min(es.beta)-by,max(es.beta)+by,by=by))
+by = 0.1
+hist(ge.beta,
+     breaks = seq(min(ge.beta)-by,max(ge.beta)+by,by=by))
 
 # Gamma: trait effects
 es.gamma <- effectiveSize(mpost$Gamma)
 ge.gamma <- gelman.diag(mpost$Gamma, multivariate = F)$psrf
+by = 100
+hist(es.gamma,
+     breaks = seq(min(es.gamma)-by,max(es.gamma)+by,by=by))
+by = 0.1
+hist(ge.gamma,
+     breaks = seq(min(ge.gamma)-by,max(ge.gamma)+by,by=by))
 
 # Rho: phylogenetic signal
-es.rho <- effectiveSize(mpost$Rho)
-ge.rho <- gelman.diag(mpost$Rho, multivariate = F)$psrf
+#es.rho <- effectiveSize(mpost$Rho)
+#ge.rho <- gelman.diag(mpost$Rho, multivariate = F)$psrf
+#by = 100
+#hist(es.rho,
+#     breaks = seq(min(es.rho)-by,max(es.rho)+by,by=by))
+#by = 0.1
+#hist(ge.rho,
+#     breaks = seq(min(ge.rho)-by,max(ge.rho)+by,by=by))
 
 # V: latent variables
 es.V <- effectiveSize(mpost$V)
 ge.V <- gelman.diag(mpost$V, multivariate = F)$psrf
+hist(es.V)
+hist(ge.V)
 
 # Alpha: spatial structure (assumes only 1 spatial level)
 es.alpha <- effectiveSize(mpost$Alpha[[1]])
@@ -106,10 +114,6 @@ mixing <- list(
 )
 
 summary(mpost)
-
-saveRDS(mixing,file=file.path(input,'post_estimates.rds'))
-saveRDS(mpost,file=file.path(input,'mpost.rds'))
-saveRDS(fitSepTF,file=file.path(input,'fitSepTF.rds'))
 
 
 
