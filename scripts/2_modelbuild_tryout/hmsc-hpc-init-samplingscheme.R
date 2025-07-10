@@ -14,7 +14,6 @@ params <- list(
   verbose = verbose
 )
 
-
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   message("Running in RStudio")
@@ -37,6 +36,8 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(ape,lib="~/Rlibs")
   library(dplyr,lib="~/Rlibs")
   library(Hmsc,lib="~/Rlibs")
+  library(dplyr,lib="~/Rlibs")
+  library(withr,lib="~/Rlibs")
   input <- '~/home/projects/hmsc-danishbirds'
   python <- '~/opt/software/anaconda3/2021.05/bin/python'
   flagInit = 1
@@ -144,7 +145,7 @@ for(mt in mtVec){
     struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "GPP",
                                    sKnot = xyKnots)
   }else if(mt==3){
-    struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "Full")
+    struc_space <- HmscRandomLevel(sData = xycoords)
     ## EDIT FORMULA FOR LESS ENVIRONMENTAL PARAMS 
     Xsub <- X %>% 
       select(tmean_year,tmean_winter,tmean_breeding,
@@ -153,7 +154,7 @@ for(mt in mtVec){
     XFormula <- as.formula(paste("~", paste(colnames(Xsub), collapse = "+"), sep = " "))
     
   }else if(mt==4){
-    struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "Full")
+    struc_space <- HmscRandomLevel(sData = xycoords)
   }
   # define m 
   m <-Hmsc(Y = Y, XData = X, XFormula = XFormula, TrData = Tr,
@@ -203,11 +204,3 @@ for(mt in mtVec){
   print('Init files created')
   }
 }
-
-
-
-
-
-
-
-
