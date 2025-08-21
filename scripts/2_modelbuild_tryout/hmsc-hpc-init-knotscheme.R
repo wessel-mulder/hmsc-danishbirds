@@ -1,7 +1,9 @@
 rm(list = ls())
 
 # Define MCMC settings
-subset_env_vars <- 1 # flip to 0
+subset_env_vars <- 1 # flip to 0 to reverse subset
+mtVec = c(0.2,0.3,0.4,0.5) # knotdistances 
+
 nChains <- 4
 thin <- 10
 nSamples <- 2000
@@ -121,8 +123,6 @@ xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-mtVec = c(0.2,0.3,0.4,0.5) # 1-nngp, 2-gpp, 3-enviro, 4-full
-mtSuffix = c('0.2','0.3','0.4','0.5')
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 for(mt in mtVec){
@@ -146,6 +146,7 @@ for(mt in mtVec){
   
   xycoords <- as.matrix(xycoords)
   xyKnots = constructKnots(xycoords,knotDist = mt, minKnotDist = mt)
+  nKnots <- nrow(xyKnots)
   plot(xycoords[,2],xycoords[,1],pch=18, asp=1)
   points(xyKnots[,2],xyKnots[,1],col='red',pch=18)
   struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "GPP",
@@ -171,7 +172,8 @@ for(mt in mtVec){
                          verbose = verbose,
                          engine="HPC")
   
-  dir_name <- paste0(date,'_knots_',mtVec)
+  dir_name <- paste0(date,'_knots_',nKnots)
+  print(dir_name)
   dir.create(file.path(input,'tmp_rds',dir_name))
   
   init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
