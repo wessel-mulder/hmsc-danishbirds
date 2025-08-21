@@ -1,6 +1,7 @@
 rm(list = ls())
 
 # Define MCMC settings
+subset_env_vars <- 1 # flip to 0
 nChains <- 4
 thin <- 10
 nSamples <- 2000
@@ -83,6 +84,8 @@ Tr['Motacilla_flava_flavissima',] == Tr['Motacilla_flava',] # MIGRATION FALSE
 Tr <- Tr[!(rownames(Tr) %in% c('Motacilla_alba_yarrellii','Motacilla_flava_flavissima')), ]
 rownames(Tr)[rownames(Tr) == "Acanthis_flammea_cabaret"] <- "Acanthis_flammea"
 
+
+
 # --> LOAD STUDY DESIGN 
 Design <- read.csv(file.path(input,"data/1_preprocessing/design/studyDesign.csv"),row.names=5)
 
@@ -125,6 +128,13 @@ date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 for(mt in mtVec){
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
+  if(subset_env_vars == 1){
+    X <- X %>% 
+      select(tmean_winter,tmean_breeding,
+             prec_winter,prec_breeding,
+             hh,unique)
+      
+  }
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
   TrFormula <- as.formula(paste("~", paste(colnames(Tr), collapse = "+"), sep = " "))
   
@@ -161,7 +171,7 @@ for(mt in mtVec){
                          verbose = verbose,
                          engine="HPC")
   
-  dir_name <- paste0(date,'_',mtSuffix[mt])
+  dir_name <- paste0(date,'_knots_',mtVec)
   dir.create(file.path(input,'tmp_rds',dir_name))
   
   init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")

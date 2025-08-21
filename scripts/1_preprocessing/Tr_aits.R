@@ -15,7 +15,13 @@ traits_subset$latin_DOF_underscores <- gsub(' ','_',traits_subset$latin_DOF)
 traits_whack <- traits_subset %>%
   select(latin_DOF_underscores,Migration_AVONET,foraging_guild_consensus)
 
+# check for errors 
+unique(traits_whack$foraging_guild_consensus)
 
+# turn migratory to character
+traits_whack$Migration_AVONET[traits_whack$Migration_AVONET==1] <- 'sedentary'
+traits_whack$Migration_AVONET[traits_whack$Migration_AVONET==2] <- 'partial'
+traits_whack$Migration_AVONET[traits_whack$Migration_AVONET==3] <- 'migratory'
 # WRITE OUT ---------------------------------------------------------------
 write.csv(traits_whack,'data/1_preprocessing/Tr_aits/traits-guild_migration.csv')
 
