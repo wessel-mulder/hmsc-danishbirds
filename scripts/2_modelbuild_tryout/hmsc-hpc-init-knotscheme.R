@@ -118,8 +118,8 @@ xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-mtVec = c(1:4) # 1-nngp, 2-gpp, 3-enviro, 4-full
-mtSuffix = c('nng','gpp','env','ful')
+mtVec = c(0.2,0.3,0.4,0.5) # 1-nngp, 2-gpp, 3-enviro, 4-full
+mtSuffix = c('0.2','0.3','0.4','0.5')
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 for(mt in mtVec){
@@ -134,29 +134,14 @@ for(mt in mtVec){
   struc_time <- HmscRandomLevel(sData = time)
   Design$year <- as.factor(Design$year)
   
-  if(mt==1){
-    xycoords <- as.matrix(xycoords)
-    struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "NNGP", nNeighbours = 10)
-  }else if(mt==2){
-    xycoords <- as.matrix(xycoords)
-    xyKnots = constructKnots(xycoords,knotDist = 0.5, minKnotDist = 0.3)
-    plot(xycoords[,2],xycoords[,1],pch=18, asp=1)
-    points(xyKnots[,2],xyKnots[,1],col='red',pch=18)
-    struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "GPP",
-                                   sKnot = xyKnots)
+  xycoords <- as.matrix(xycoords)
+  xyKnots = constructKnots(xycoords,knotDist = mt, minKnotDist = mt)
+  plot(xycoords[,2],xycoords[,1],pch=18, asp=1)
+  points(xyKnots[,2],xyKnots[,1],col='red',pch=18)
+  struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "GPP",
+                                 sKnot = xyKnots)
     
-  }else if(mt==3){
-    struc_space <- HmscRandomLevel(sData = xycoords)
-    ## EDIT FORMULA FOR LESS ENVIRONMENTAL PARAMS 
-    Xsub <- X %>% 
-      select(tmean_year,tmean_winter,tmean_breeding,
-             prec_year,prec_winter,prec_breeding,
-             hh,unique)
-    XFormula <- as.formula(paste("~", paste(colnames(Xsub), collapse = "+"), sep = " "))
-    
-  }else if(mt==4){
-    struc_space <- HmscRandomLevel(sData = xycoords)
-  }
+
   # define m 
   m <-Hmsc(Y = Y, XData = X, XFormula = XFormula, TrData = Tr,
            TrFormula = TrFormula, phyloTree = phy,

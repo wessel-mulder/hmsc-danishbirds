@@ -62,6 +62,13 @@ filteredList <- chainList[!sapply(chainList, is.null)]
 
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 
+
+# # TRY THINNING ------------------------------------------------------------
+# pooled <- poolMcmcChains(filteredList,thin=50)
+# mpooled <- convertToCodaObject(pooled)
+# 
+# fit_thin = importPosteriorFromHPC(m,pooled,160,0,0)
+
 # PSRF ----------------------------------------------------
 # Convert model output to coda format for MCMC diagnostics
 mpost <- convertToCodaObject(fitSepTF,start=1)
@@ -71,7 +78,7 @@ ns <- ncol(fitSepTF$Y)
 
 ### OMEGA PREPROCESSING
 omegas = mpost$Omega
-maxOmega = 100
+maxOmega = 1000
 omega_pre_1=omegas[[1]]
 omega_pre_2=omegas[[2]]
 
@@ -89,50 +96,130 @@ if (z > maxOmega) {
 params <- list(mpost$Beta,mpost$Gamma,mpost$Rho,mpost$V,
             mpost$Alpha[[1]],mpost$Alpha[[2]],
             omega_k_1,omega_k_2)
+
+diags <- list(psrf = list(), ess = list())
+for(i in seq_along(params)){
+  # BETA - species x environment  
+  print(i)
+  # get psrfs 
+  psrf <- gelman.diag(params[[i]], multivariate = F)$psrf
+  ge <- psrf[,1]
+  diags$psrf[[i]] <- ge
+  
+  # get ess 
+  ess <- effectiveSize(params[[i]])
+  diags$ess[[i]] <- ess
+}
+
 names <- c('beta','gamma','rho','V',
            'alpha_space','alpha_time',
-           'omega_space','omega_time')
-full_names <- c("PSRF: Beta - Species x Environment",
-                "PSRF: Gamma - Traits x Environment",
-                "PSRF: Rho - Phylogeny",
-                "PSRF: V - autocorrelation?",
-                "PSRF: Alpha - Spatial",
-                "PSRF: Alpha - Time",
-                "PSRF: Omega1 - Spec. Assoc. Space",
-                "PSRF: Omega2 - Spec. Assoc. Time")
+           'omega_raw','omega_resid')
+full_names <- c("Beta - Species x Environment",
+                "Gamma - Traits x Environment",
+                "Rho - Phylogeny",
+                "V - Variation",
+                "Alpha - Spatial",
+                "Alpha - Time",
+                "Omega1 - Raw associations",
+                "Omega2 - Residual associations")
 
 cols <- c('green4','purple4','yellow4','orange4','ivory','ivory','blue4','blue4')
 
 for(i in seq_along(params)){
+  ### PSRFS 
   if(i == 1){
     # init output documents 
     if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results'))}
-    text.file = file.path(input,'results','MCMC_convergence.txt')
-    pdf(file=file.path(input,'results','MCMC_convergence.pdf'),
+    text.file = file.path(input,'results','PSRF_ESS.txt')
+    pdf(file=file.path(input,'results','PSRF_ESS.pdf'),
         width = 8,
         height = 6)
     
     cat("MCMC Convergence statistics\n\n",file=text.file,sep="")
     cat(c("\n",input,"\n\n"),file=text.file,sep="",append=TRUE)
     
-
   }
   
-  # BETA - species x environment  
-  beta <- gelman.diag(params[[i]], multivariate = F)$psrf
-  ge.beta <- beta[,1]
   # concatenate output 
-  cat(paste0("\n",full_names[i],"\n\n"),file=text.file,sep="",append=TRUE)
-  cat(capture.output(summary(ge.beta)), file = text.file, sep = "\n", append = TRUE)  # plot 
+  cat(paste0("\n",'PSRF: ',full_names[i],"\n\n"),file=text.file,sep="",append=TRUE)
+  cat(capture.output(summary(diags$psrf[[i]])), file = text.file, sep = "\n", append = TRUE)  
+  cat(paste0("\n",'ESS: ',full_names[i],"\n\n"),file=text.file,sep="",append=TRUE)
+  cat(capture.output(summary(diags$ess[[i]])), file = text.file, sep = "\n", append = TRUE)  
+  
+  # plot PSRF
   par(mfrow=c(1,2))
-  vioplot(ge.beta,col=cols[i],ylim=c(0,max(ge.beta)),main=full_names[i])
-  vioplot(ge.beta,col=cols[i],ylim=c(0.9,1.1),main="")
+  vioplot(diags$psrf[[i]],col=cols[i],ylim=c(1,max(diags$psrf[[i]])),
+          main=paste0('PSRF: ',full_names[i]))
+  abline(h=mean(diags$psrf[[i]]),col='red')
+  vioplot(diags$psrf[[i]],col=cols[i],ylim=c(1,1.1),main=paste0('Mean = ',round(mean(diags$psrf[[i]]),2)))
+  abline(h=mean(diags$psrf[[i]]),col='red')
+  par(mfrow=c(1,1))
+  hist(diags$ess[[i]],breaks = seq(0,max(diags$ess[[i]])+100,by=100),
+       xlab = 'Number of effective samples',
+       main=paste0('ESS: ',full_names[i]))
+  legend('topright',
+         c(paste0('Proportion of effective samples <100 = ',
+                round(length(diags$ess[[i]][diags$ess[[i]] < 100]) / length(diags$ess[[i]]),2)),
+           paste0('Proportion of effective samples <200 = ',
+                  round(length(diags$ess[[i]][diags$ess[[i]] < 200]) / length(diags$ess[[i]]),2))),
+         bty = 'n')
+
   
   if(i == length(params)){dev.off()}
+  if(i == length(params)){
+    # --- 1. Collect all psrf and ess into one structure ---
+    all_psrf <- list()
+    all_ess  <- list()
+    
+    for(i in seq_along(params)){
+      all_psrf[[ full_names[i] ]] <- as.numeric(diags$psrf[[i]])
+      all_ess[[ full_names[i] ]]  <- as.numeric(diags$ess[[i]])
+    }
+    
+    # --- 2. Open PDF for output ---
+    pdf(file=file.path(input, "results", "PSRF_ESS_combined.pdf"), width=10, height=6)
+    
+    # --- 3. Violinplot for PSRF ---
+    par(mfrow=c(1,1))  # left = PSRF, right = ESS
+    
+    # PSRF plot
+    vioplot(all_psrf, col=cols, main="PSRF across parameters",
+            ylim=c(0.99, max(unlist(all_psrf), na.rm=TRUE)),
+            xaxt = 'n',ann =  T)
+    abline(h=1.1, lty=1, col="red") # warning threshold
+    #axis(1, at=seq_along(all_psrf), labels=names(all_psrf), las=2, cex.axis=0.7)
+    legend('topleft',
+           fill = cols,
+           full_names)
+    
+    vioplot(all_psrf, col=cols, main="PSRF across parameters",
+            ylim=c(0.99, 1.1),
+            xaxt = 'n',ann =  T)
+    abline(h=1.1, lty=1, col="red") # warning threshold
+    #axis(1, at=seq_along(all_psrf), labels=names(all_psrf), las=2, cex.axis=0.7)
+
+    
+    # ESS plot
+    vioplot(all_ess, col=cols, main="ESS across parameters",
+            ylim=c(0, max(unlist(all_ess), na.rm=TRUE)),
+            xaxt = 'n',ann=T)
+    abline(h=100, lty=1, col="red") # warning threshold
+    #axis(1, at=seq_along(all_ess), labels=names(all_ess), las=3, cex.axis=0.7)
+    # ESS plot
+    vioplot(all_ess, col=cols, main="ESS across parameters",
+            ylim=c(0, 1000),
+            xaxt = 'n',ann=T)
+    abline(h=100, lty=1, col="red") # warning threshold
+    #axis(1, at=seq_along(all_ess), labels=names(all_ess), las=3, cex.axis=0.7)
+    
+
+    dev.off()
+    
+  }
+  
 }
 
 
-# EFFECTIVE SAMPLE SIZES  -------------------------------------------------
 # EVALUATE MODEL FIT  -----------------------------------------------------
 # AUC AND TJUR 
 # for(i in c(100,500,1000,5000,50)){
@@ -156,9 +243,13 @@ pdf(file=file.path(input,'results','AUC_TjurR2.pdf'),
     height = 6)
 par(mfrow=c(1,2))
 mean <- mean(MF$AUC)
-hist(MF$AUC,main=paste0('AUC = ',floor(mean*100)/100))
+hist(MF$AUC,main=paste0('Mean AUC across species = ',floor(mean*100)/100),
+     ylab = 'Number of species',
+     xlab = 'AUC')
 mean <- mean(MF$TjurR2)
-hist(MF$TjurR2,main=paste0('TjurR2 = ',floor(mean*100)/100))
+hist(MF$TjurR2,main=paste0('Mean TjurR2 across species = ',floor(mean*100)/100),
+     ylab = 'Number of species',
+     xlab = 'TjurR2')
 
 # get species and trait information to identify poorly modelled 
 # species and traits 
@@ -174,9 +265,10 @@ rownames(sp_fits) <- sp
 join <- merge(sp_fits,tr,by='row.names')
 join
 
-par(mfrow=c(2,1))
+par(mfrow=c(1,1),
+    mar = c(10,4,4,2))
 
-### FORAGING GUILD 
+### ORDER BY NR OF SPECIES IN GUILD 
 join_foraging <- join %>%
   group_by(foraging_guild_consensus) %>%
   summarise(auc_mu = mean(auc),
@@ -189,44 +281,76 @@ join_foraging <- join %>%
 
 join_foraging <- join_foraging[order(join_foraging$n, decreasing = TRUE), ]
 tail(join_foraging)
-barplot(
+
+join$foraging_guild_consensus <- factor(join$foraging_guild_consensus,
+                                           levels = join_foraging$foraging_guild_consensus)
+
+
+boxplot(auc~foraging_guild_consensus,data=join,
+        las = 3,                # rotate labels if long
+        cex.names = 0.5,       # smaller axis tick labels
+        ylab = "Mean AUC",
+        xlab = NULL)
+boxplot(tjur~foraging_guild_consensus,data=join,
+        las = 3,                # rotate labels if long
+        cex.names = 0.5,       # smaller axis tick labels
+        ylab = "Mean AUC",
+        xlab = NULL)
+
+
+bp <- barplot(
   height = join_foraging$auc_mu,
   names.arg = join_foraging$foraging_guild_consensus,
+  ylim = c(0,1.1),
   las = 3,                # rotate labels if long
   cex.names = 0.75,       # smaller axis tick labels
   ylab = "Mean AUC"
 )
-barplot(
+# Add SD whiskers
+bp+arrows(
+  x0 = bp, y0 = join_foraging$auc_mu - join_foraging$auc_sd,
+  x1 = bp, y1 = join_foraging$auc_mu + join_foraging$auc_sd,
+  angle = 90, code = 3, length = 0.05
+)
+
+
+bp <- barplot(
   height = join_foraging$tjur_mu,
-  #names.arg = join_foraging$foraging_guild_consensus,
-  #las = 3,                # rotate labels if long
-  #cex.names = 0.75,       # smaller axis tick labels
+  names.arg = join_foraging$foraging_guild_consensus,
+  ylim=c(0,0.6),
+  las = 3,                # rotate labels if long
+  cex.names = 0.75,       # smaller axis tick labels
   ylab = "Mean TjurR2",
 )
-
-### MIGRATORY
-join_migratory <- join %>%
-  group_by(Migration_AVONET) %>%
-  summarise(auc_mu = mean(auc),
-            tjur_mu = mean(tjur),
-            n = dplyr::n(),
-            .groups = "drop") %>%
-  ungroup()
-
-join_migratory <- join_migratory[order(join_migratory$n, decreasing = TRUE), ]
-tail(join_migratory)
-barplot(
-  height = join_migratory$auc_mu,
-  names.arg = join_migratory$Migration_AVONET,
-  las = 1,                # rotate labels if long
-  ylab = "Mean AUC"
+bp+arrows(
+  x0 = bp, y0 = join_foraging$tjur_mu - join_foraging$tjur_sd,
+  x1 = bp, y1 = join_foraging$tjur_mu + join_foraging$tjur_sd,
+  angle = 90, code = 3, length = 0.05
 )
-barplot(
-  height = join_migratory$tjur_mu,
-  #names.arg = join_migratory$Migration_AVONET,
-  #las = 2,                # rotate labels if long
-  ylab = "Mean TjurR2",
-)
+
+# ### MIGRATORY
+# join_migratory <- join %>%
+#   group_by(Migration_AVONET) %>%
+#   summarise(auc_mu = mean(auc),
+#             tjur_mu = mean(tjur),
+#             n = dplyr::n(),
+#             .groups = "drop") %>%
+#   ungroup()
+# 
+# join_migratory <- join_migratory[order(join_migratory$n, decreasing = TRUE), ]
+# tail(join_migratory)
+# barplot(
+#   height = join_migratory$auc_mu,
+#   names.arg = join_migratory$Migration_AVONET,
+#   las = 1,                # rotate labels if long
+#   ylab = "Mean AUC"
+# )
+# barplot(
+#   height = join_migratory$tjur_mu,
+#   #names.arg = join_migratory$Migration_AVONET,
+#   #las = 2,                # rotate labels if long
+#   ylab = "Mean TjurR2",
+# )
 
 dev.off()
 }
@@ -250,35 +374,173 @@ preds <- computePredictedValues(fitSepTF,partition.sp = 1,thin=20)
 
 # VARIANCE PARTITIONG -----------------------------------------------------
 # by groups 
-VP = computeVariancePartitioning(fitSepTF,start = 1900)
-#saveRDS(VP,file.path(input,'results','VP'))
-#VP <- readRDS(file.path(input,'results','VP'))
-plotVariancePartitioning(fitSepTF,VP)
 
-VP$group
 
+rm(chainList,filteredList,preds)
+VP_1950 = computeVariancePartitioning(fitSepTF,start = 1950)
 # split by groups 
-VP_split = computeVariancePartitioning(fitSepTF,start = 1900,
-                                 group = c(1,1,1,
-                                           2,2,2,
-                                           3,3,
-                                           4,4,4,4,4,4,4,4),
-                                 groupnames = c('temperature',
-                                                'precipitation',
-                                                'landscape',
-                                                'land-use classes'))
-plotVariancePartitioning(fitSepTF,VP_split,
-                         cols = c('red2',
-                                  'blue2',
-                                  'yellow2',
-                                  'green2',
-                                  'orange3',
-                                  'orange4'))
+names <- VP_1950$groupnames
+VP_split_1950 = computeVariancePartitioning(fitSepTF,start = 1950,
+                                            group = c(1,1,1,
+                                                      2,2,2,
+                                                      3,3,
+                                                      4,4,4,4,4,4,4,4),
+                                            groupnames = c('temperature',
+                                                           'precipitation',
+                                                           'landscape',
+                                                           'land-use classes'))
+# split by seasons
+VP_season_1950 = computeVariancePartitioning(fitSepTF,start = 1950,
+                                             group = c(1,2,3,
+                                                       1,2,3,
+                                                       4,4,
+                                                       rep(5,8)),
+                                             groupnames = c('year',
+                                                            'winter',
+                                                            'breeding',
+                                                            'landscape',
+                                                            'land-use classes'))
+
+{
+pdf(file=file.path(input,'results','VP_full.pdf'),
+    width = 8,
+    height = 6)
+
+default_margins <- par("mar")
+default_margins
+#> [1] 5.1 4.1 4.1 2.1
+
+# Make the bottom margin larger
+new_margins <- default_margins + c(0, 0, 0, 0)
+par(mar = new_margins)
+
+greens <- colorRampPalette(c("springgreen4", "springgreen1"))(8)
+greens
+
+plotVariancePartitioning(fitSepTF,
+                         VP_1950,
+                         cols = c('firebrick3',
+                                  'firebrick2',
+                                  'firebrick1',
+                                  'dodgerblue3',
+                                  'dodgerblue2',
+                                  'dodgerblue1',
+                                  'goldenrod2',
+                                  'goldenrod1',
+                                  greens,
+                                  'cornsilk2',
+                                  'cornsilk3'),
+                         las = 2,
+                         border = NA,
+                         space=0,
+                         axisnames=F,
+                         legend.text=F,
+                         ann=T)
+                          
+plotVariancePartitioning(fitSepTF,VP_split_1950,
+                         cols = c('firebrick3',
+                                  'dodgerblue3',
+                                  'goldenrod2',
+                                  'springgreen4',
+                                  'cornsilk2',
+                                  'cornsilk3'),
+                         las = 2,
+                         border = NA,
+                         space=0,
+                         axisnames=F,
+                         legend.text=F,
+                         ann=T)
+
+plotVariancePartitioning(fitSepTF,VP_season_1950,
+                         cols = c('coral',
+                                  'lightblue',
+                                  'lightgreen',
+                                  'goldenrod2',
+                                  'springgreen4',
+                                  'cornsilk2',
+                                  'cornsilk3'),
+                         las = 2,
+                         border = NA,
+                         space=0,
+                         axisnames=F,
+                         legend.text=F,
+                         ann=T)
+
+dev.off()
+}
 
 t <- VP_split$vals
 
 sp <- colnames(t)
 t[]
+
+
+# VARIANCE PARTITIONING PER GUILD  ----------------------------------------
+colnames(VP_1900$vals)
+
+# get species and trait information to identify poorly modelled 
+# species and traits 
+sp <- fitSepTF$spNames
+tr <- fitSepTF$TrData
+head(tr)
+
+rownames(tr)[tr$foraging_guild_consensus=='Low flycatching feeders']
+unique(tr$foraging_guild_consensus)
+
+# GUILDS
+for(focal_guild in unique(tr$Migration_AVONET)){
+focal_species <- rownames(tr)[tr$Migration_AVONET==focal_guild]
+focal_matrices <- VP_split_1950$vals[,focal_species]
+greens <- colorRampPalette(c("springgreen4", "springgreen1"))(8)
+greens
+
+barplot(focal_matrices,
+                         col = c('firebrick3',
+                                   'dodgerblue3',
+                                   'goldenrod2',
+                                   'springgreen4',
+                                   'cornsilk2',
+                                   'cornsilk3'),
+                         las = 2,
+                         border = NA,
+                         space=0,
+                         axisnames=T,
+                         legend.text=T,
+                         ann=T,
+        main = focal_guild)
+}
+
+# MIGRATION
+for(focal_guild in unique(tr$Migration_AVONET)){
+  focal_species <- rownames(tr)[tr$Migration_AVONET==focal_guild]
+  focal_matrices <- VP_season_1950$vals[,focal_species]
+  greens <- colorRampPalette(c("springgreen4", "springgreen1"))(8)
+  greens
+  
+  barplot(focal_matrices,
+          col = c('coral',
+                   'lightblue',
+                   'lightgreen',
+                   'goldenrod2',
+                   'springgreen4',
+                   'cornsilk2',
+                   'cornsilk3'),
+          las = 2,
+          border = NA,
+          space=0,
+          axisnames=T,
+          legend.text=T,
+          ann=T,
+          main = focal_guild)
+}
+
+
+
+
+join <- merge(sp_fits,tr,by='row.names')
+join
+
+head(VP_1900$vals)
 
 # LOOKING AT PARAMETERS ---------------------------------------------------
 
@@ -287,7 +549,7 @@ t[]
 VP$R2T$Beta
 
 # how much of the traits propagate into explaining the distributions 
-# 13% of occurrent is explained by the traits 
+# 13% of occurrence is explained by the traits 
 VP$R2T$Y
 
 # parameter estimates for environments 
@@ -297,17 +559,21 @@ postBeta$support[,1]
 postBeta$support[,1]
 
 
+  
+  
+plotBeta(fitSepTF,post = postBeta, 
+         param = "Sign", supportLevel = 0.95,
+         SpeciesOrder = 'Vector',
+         SpVector = focal_species,
+         spNamesNumber = c(F,F))
 
-
-plotBeta(m, post = postBeta, param = "Sign",
-         plotTree = F, supportLevel = 0.95, split=.4, spNamesNumbers = c(F,F))
-plotBeta(m, post = postBeta, param = "Mean",
-         plotTree = F, supportLevel = 0.95, split=.4, spNamesNumbers = c(F,F),
-         colorLevels = c(100))
 
 postGamma = getPostEstimate(fitSepTF,parName = 'Gamma')
 plotGamma(fitSepTF, post=postGamma, param="Sign", supportLevel = 0.95)
-plotGamma(fitSepTF, post=postGamma, param="Mean", supportLevel = 0.95)
+#plotGamma(fitSepTF, post=postGamma, param="Mean", supportLevel = 0.95)
+
+postGamma_select <- lapply(postGamma,function(x) x[2:8,])
+plotGamma(fitSepTF, post=postGamma, param="Sign", supportLevel = 0.95)
 
 #postOmega = getPostEstimate(fitSepTF,parName = 'Omega')
 #plotGamma(fitSepTF, post=postGamma, param="Sign", supportLevel = 0.95)
@@ -341,32 +607,6 @@ Gradient = constructGradient(fitSepTF,focalVariable = "tmean_year")
 predY = predict(fitSepTF,Gradient = Gradient, expected = TRUE,
                 post = mpost,
                 predictEtaMean = T)
-
-# SUBSETTING BY GUILDS ----------------------------------------------------
-Y <- m$Y
-Tr <- m$Tr
-
-migrate <- Tr[,2]
-guild <- Tr[,c(3:ncol(Tr))]
-
-library(tidyverse)
-guild_df <- guild %>%
-  as.data.frame() %>%
-  rownames_to_column(var = "species") %>%
-  pivot_longer(-species, names_to = "guild", values_to = "membership") %>%
-  filter(membership == 1) %>%
-  mutate(guild = str_remove(guild, "^foraging_guild_consensus")) %>%
-  select(species, guild)
-
-guild_df$guild <- as.factor(guild_df$guild)
-
-
-
-fitSepTF = importPosteriorFromHPC(m, chainList, 100, 10, 1000)
-
-
-
-input <- '/home/bhr597/home/projects/hmsc-danishbirds/tmp_rds/2025-05-22_16-39-28'
 
 
 
@@ -416,7 +656,9 @@ plotPostEstimate <- function(m,
                              returnPlot = TRUE,
                              supportLevel = 0.95,
                              newEnvNames = NULL,
-                             newTraitNames = NULL) {
+                             newTraitNames = NULL,
+                             spVector = NULL,
+                             main = NULL) {
   # Needs
   require(Hmsc)
   require(tidyverse)
@@ -431,6 +673,13 @@ plotPostEstimate <- function(m,
   } else {
     # For Beta, Gamma, use getPostEstimate
     postEstimate <- getPostEstimate(m, parName = parName)
+    # subset if spVector is supplied 
+    if(length(spVector)){
+      postEstimate <- lapply(postEstimate,function(x) {
+        x[,spVector]
+      }
+      )
+    }
     meanEst <- postEstimate$mean
     supportEst <- postEstimate$support
   }
@@ -438,8 +687,10 @@ plotPostEstimate <- function(m,
   # Identify the structure based on the parameter being plotted
   if (parName == "Beta") {
     rowNames <- m$covNames  # Covariates (use new names if provided)
-    colNames <- m$spNames   # Species
-    rowLabel <- "Environmental Niche"
+    if(length(spVector)){
+      colNames <- spVector
+    }
+    rowLabel <- "Covariates"
     colLabel <- "Species"
     
     # Format the data as sign or mean
@@ -551,7 +802,7 @@ plotPostEstimate <- function(m,
   # Plot based on Sign or Mean
   if (plotType == "Sign") {
     plot <- ggplot(plotMatmelt, aes(x = Var1, y = Var2, fill = factor(value))) +
-      labs(x = rowLabel, y = colLabel, fill = "Sign") +
+      labs(x = rowLabel, y = colLabel, fill = "Sign",title = main) +
       geom_tile(color = 'gray60') +
       scale_fill_manual(breaks = levels(factor(plotMatmelt$value)),
                         values = cols_to_use,
@@ -566,10 +817,11 @@ plotPostEstimate <- function(m,
             legend.text = element_text(size = 12),
             axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
       scale_x_discrete(expand = c(0, 0)) +
+
       scale_y_discrete(expand = c(0, 0))
   } else if (plotType == "Mean") {
     plot <- ggplot(plotMatmelt, aes(x = Var1, y = Var2, fill = value)) +
-      labs(x = rowLabel, y = colLabel, fill = "Mean") +
+      labs(x = rowLabel, y = colLabel, fill = "Mean",title = main) +
       geom_tile(color = 'gray60') +
       scale_fill_steps2(n.breaks = 7,
                         high = cols_to_use[3],
@@ -593,11 +845,31 @@ plotPostEstimate <- function(m,
   return(plot)
 }
 
+rownames(tr)[tr$foraging_guild_consensus==focal_guild]
+unique(tr$foraging_guild_consensus)
 
-plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign")
-plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Mean")
+# GUILDS
+for(focal_guild in unique(tr$foraging_guild_consensus)){
+  focal_species <- rownames(tr)[tr$foraging_guild_consensus==focal_guild]
+  focal_matrices <- lapply(postBeta,function(x) {
+    x[,focal_species]
+  }
+)
+}
+
+plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign",
+                 spVector = focal_species)
+plotBeta(fitSepTF,postBeta,
+         param='Sign',supportLevel=0.95)
+
+plotGamma(fitSepTF,postGamma,
+         param='Sign',supportLevel=0.95)
+
+focal_guild <- 'Grazing waterfowl'
+focal_species <- rownames(tr)[tr$foraging_guild_consensus==focal_guild]
 plotPostEstimate(fitSepTF, parName = "Gamma", plotType = "Sign")
-plotPostEstimate(fitSepTF, parName = "Gamma", plotType = "Mean")
-plotPostEstimate(fitSepTF, parName = "Omega", plotType = "Sign")
-plotPostEstimate(fitSepTF, parName = "Omega", plotType = "Mean")
+plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign",
+                 spVector = focal_species,
+                 main = focal_guild)
+
 
