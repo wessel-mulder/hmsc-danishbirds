@@ -2,7 +2,7 @@ rm(list = ls())
 
 # Define MCMC settings
 subset_env_vars <- 1 # flip to 0 to reverse subset
-knotDistance = 0.5 # knotdistances 
+knotDistance = 0.2 # knotdistances 
 nChains <- 4
 verbose <- 100
 
@@ -131,7 +131,8 @@ for(i in thin){
     thin = i,
     nSamples = j,
     transient = transient,
-    verbose = verbose
+    verbose = verbose,
+    knotDist = knotDistance
     )
 
 
