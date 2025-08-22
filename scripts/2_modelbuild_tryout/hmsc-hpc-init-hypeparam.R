@@ -4,19 +4,8 @@ rm(list = ls())
 subset_env_vars <- 1 # flip to 0 to reverse subset
 knotDistance = 0.5 # knotdistances 
 nChains <- 4
-
-thin <- c(1,10,100)
-nSamples <- c(250,500,1000)
-
-transient <- thin*nSamples
 verbose <- 100
-params <- list(
-  nChains = nChains,
-  thin = thin,
-  nSamples = nSamples,
-  transient = transient,
-  verbose = verbose
-)
+
 
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
@@ -124,6 +113,9 @@ xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
+thin <- c(10,50,100)
+nSamples <- c(250,500,1000)
+
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 for(i in thin){
@@ -131,6 +123,17 @@ for(i in thin){
   
   for(j in nSamples){
     print(j)
+
+    transient <- i*j
+
+    params <- list(
+    nChains = nChains,
+    thin = i,
+    nSamples = j,
+    transient = transient,
+    verbose = verbose
+    )
+
 
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
@@ -177,9 +180,11 @@ for(i in thin){
                          verbose = verbose,
                          engine="HPC")
   
-  dir_name <- paste0(date,'_samples_',i,'_thin_',j)
+  dir_name <- paste0(date,'_samples_',j,'_thin_',i)
   print(dir_name)
   dir.create(file.path(input,'tmp_rds',dir_name))
+
+
   
   init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
   m_file_path = file.path(input,'tmp_rds',dir_name, "m_object.rds")
