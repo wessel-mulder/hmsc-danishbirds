@@ -1,4 +1,4 @@
-input <- 'tmp_rds/2025-07-08_12-02-50_gpp/'
+input <- 'tmp_rds/mods-tuning-hypeparam/2025-08-22_10-09-28_samples_250_thin_100/'
 subset_sppairs <- T
 reset <- 1
 if(reset){
@@ -62,12 +62,6 @@ filteredList <- chainList[!sapply(chainList, is.null)]
 
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 
-
-# # TRY THINNING ------------------------------------------------------------
-# pooled <- poolMcmcChains(filteredList,thin=50)
-# mpooled <- convertToCodaObject(pooled)
-# 
-# fit_thin = importPosteriorFromHPC(m,pooled,160,0,0)
 
 # PSRF ----------------------------------------------------
 # Convert model output to coda format for MCMC diagnostics
@@ -148,23 +142,33 @@ for(i in seq_along(params)){
   
   # plot PSRF
   par(mfrow=c(1,2))
-  vioplot(diags$psrf[[i]],col=cols[i],ylim=c(1,max(diags$psrf[[i]])),
+  diags$psrf[[i]][diags$psrf[[i]] > 10] <- 10
+  vioplot(diags$psrf[[i]],col=cols[i],ylim=c(1,max(diags$psrf[[i]],na.rm = T)),
           main=paste0('PSRF: ',full_names[i]))
-  abline(h=mean(diags$psrf[[i]]),col='red')
-  vioplot(diags$psrf[[i]],col=cols[i],ylim=c(1,1.1),main=paste0('Mean = ',round(mean(diags$psrf[[i]]),2)))
-  abline(h=mean(diags$psrf[[i]]),col='red')
+  abline(h=1.1,col='red')
+  vioplot(diags$psrf[[i]],col=cols[i],ylim=c(1,1.1),main=paste0('Mean = ',round(mean(diags$psrf[[i]],na.rm = T),2)))
+  abline(h=1.1,col='red')
   par(mfrow=c(1,1))
   hist(diags$ess[[i]],breaks = seq(0,max(diags$ess[[i]])+100,by=100),
        xlab = 'Number of effective samples',
        main=paste0('ESS: ',full_names[i]))
-  legend('topright',
-         c(paste0('Proportion of effective samples <100 = ',
-                round(length(diags$ess[[i]][diags$ess[[i]] < 100]) / length(diags$ess[[i]]),2)),
-           paste0('Proportion of effective samples <200 = ',
-                  round(length(diags$ess[[i]][diags$ess[[i]] < 200]) / length(diags$ess[[i]]),2))),
-         bty = 'n')
+  abline(v=100,col='red',lty=1)
+  abline(v=200,col='red',lty=2)
+  abline(v=1000,col='red',lty=3)
+  legend(
+    "topright",
+    legend = c(
+      paste0("Proportion of effective samples >100 = ",
+             round(length(diags$ess[[i]][diags$ess[[i]] > 100]) / length(diags$ess[[i]]), 2)),
+      paste0("Proportion of effective samples >200 = ",
+             round(length(diags$ess[[i]][diags$ess[[i]] > 200]) / length(diags$ess[[i]]), 2)),
+      paste0("Proportion of effective samples >1000 = ",
+             round(length(diags$ess[[i]][diags$ess[[i]] > 1000]) / length(diags$ess[[i]]), 2))
+    ),
+    col = "red",
+    lty = c(1, 2, 3)
+  )
 
-  
   if(i == length(params)){dev.off()}
   if(i == length(params)){
     # --- 1. Collect all psrf and ess into one structure ---
@@ -218,7 +222,7 @@ for(i in seq_along(params)){
   }
   
 }
-
+diags$psrf[[5]]
 
 # EVALUATE MODEL FIT  -----------------------------------------------------
 # AUC AND TJUR 
@@ -231,25 +235,21 @@ for(i in seq_along(params)){
 # mean <- mean(MF$TjurR2)
 # hist(MF$TjurR2,main=paste0(i,' = ',mean))
 # }
+rm(chainList,filteredList)
 
+dev.off()
 # get auc and tjur from model fits 
-preds <- computePredictedValues(fitSepTF,thin=50)
-MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
+preds_10 <- computePredictedValues(fitSepTF,thin=10)
+MF_10 <- evaluateModelFit(hM=fitSepTF, predY=preds_10)
+hist(MF_10$AUC,
+     main=round(mean(MF_10$AUC),2))
+hist(MF_10$TjurR2,
+     main=round(mean(MF_10$TjurR2),2))
 
-# make pdf 
-{
-pdf(file=file.path(input,'results','AUC_TjurR2.pdf'),
-    width = 8,
-    height = 6)
-par(mfrow=c(1,2))
-mean <- mean(MF$AUC)
-hist(MF$AUC,main=paste0('Mean AUC across species = ',floor(mean*100)/100),
-     ylab = 'Number of species',
-     xlab = 'AUC')
-mean <- mean(MF$TjurR2)
-hist(MF$TjurR2,main=paste0('Mean TjurR2 across species = ',floor(mean*100)/100),
-     ylab = 'Number of species',
-     xlab = 'TjurR2')
+# get number of species occurrences
+occs <- data.frame(occs = colSums(m$Y,na.rm=T),
+                   species = colnames(m$Y))
+
 
 # get species and trait information to identify poorly modelled 
 # species and traits 
@@ -257,13 +257,14 @@ sp <- fitSepTF$spNames
 tr <- fitSepTF$TrData
 
 sp_fits <- data.frame(
-  auc = MF$AUC,
-  tjur = MF$TjurR2
+  auc = MF_10$AUC,
+  tjur = MF_10$TjurR2
 )
 rownames(sp_fits) <- sp
 
-join <- merge(sp_fits,tr,by='row.names')
-join
+semi <- merge(sp_fits,tr,by='row.names')
+names(semi)[names(semi)=='Row.names'] <- 'species'
+join <- merge(semi,occs,by='species')
 
 par(mfrow=c(1,1),
     mar = c(10,4,4,2))
@@ -283,7 +284,36 @@ join_foraging <- join_foraging[order(join_foraging$n, decreasing = TRUE), ]
 tail(join_foraging)
 
 join$foraging_guild_consensus <- factor(join$foraging_guild_consensus,
-                                           levels = join_foraging$foraging_guild_consensus)
+                                        levels = join_foraging$foraging_guild_consensus)
+
+
+plot.new()
+# make pdf 
+{
+pdf(file=file.path(input,'results','AUC_TjurR2.pdf'),
+    width = 8,
+    height = 6)
+par(mfrow=c(1,1))
+mean <- mean(MF_10$AUC)
+hist(MF_10$AUC,main=paste0('Mean AUC across species = ',floor(mean*100)/100),
+     ylab = 'Number of species',
+     xlab = 'AUC')
+mean <- mean(MF_10$TjurR2)
+hist(MF_10$TjurR2,main=paste0('Mean TjurR2 across species = ',floor(mean*100)/100),
+     ylab = 'Number of species',
+     xlab = 'TjurR2')
+
+
+plot(auc~occs,
+       data = join,
+     main = 'AUC ~ nr of occurrences',
+     xlab = 'Occurrences',
+     ylab = 'AUC')
+plot(tjur~occs,
+     data = join,
+     main = 'TjurR2 ~ nr of occurrences',
+     xlab = 'Occurrences',
+     ylab = 'TjurR2')
 
 
 boxplot(auc~foraging_guild_consensus,data=join,
@@ -328,6 +358,8 @@ bp+arrows(
   angle = 90, code = 3, length = 0.05
 )
 
+
+
 # ### MIGRATORY
 # join_migratory <- join %>%
 #   group_by(Migration_AVONET) %>%
@@ -355,13 +387,25 @@ bp+arrows(
 dev.off()
 }
 
-
-
-
 # PLOTTING ACROSS GRADIENTS -----------------------------------------------
-Gradient = constructGradient(fitSepTF,focalVariable = "tmean_year")
-pred = predict(fitSepTF,Gradient = Gradient)
+Gradient = constructGradient(fitSepTF,focalVariable = "tmean_winter",
+                             ngrid=30,
+                             non.focalVariables = list(tmean_breeding=list(1),
+                                                       prec_winter=list(1),
+                                                       prec_breeding=list(1),
+                                                       hh=list(1),
+                                                       unique=list(1)))
+Gradient$rLNew
+post <- poolMcmcChains(filteredList)
+pred = predict(fitSepTF,post=post,
+               Gradient = Gradient,expected = T,predictEtaMean = T)
 
+for(i in 1:3){
+  plotGradient(fitSepTF,Gradient,pred=pred,measure = 'T',
+               index=i)
+}
+
+length(unique(fitSepTF$TrData$foraging_guild_consensus))
 Gradient$XDataNew
 
 predY = predict(fitSepTF, XData=Gradient$XDataNew, studyDesign=Gradient$studyDesignNew,
@@ -372,12 +416,12 @@ preds <- computePredictedValues(fitSepTF,partition.sp = 1,thin=20)
 
 
 
-# VARIANCE PARTITIONG -----------------------------------------------------
+# VARIANCE PARTITIONG FULL ENV -----------------------------------------------------
 # by groups 
 
 
 rm(chainList,filteredList,preds)
-VP_1950 = computeVariancePartitioning(fitSepTF,start = 1950)
+VP_1950 = computeVariancePartitioning(fitSepTF,start=1950)
 # split by groups 
 names <- VP_1950$groupnames
 VP_split_1950 = computeVariancePartitioning(fitSepTF,start = 1950,
@@ -475,6 +519,95 @@ sp <- colnames(t)
 t[]
 
 
+# VARIANCE PARTITIONG SEASONS + LANDSCAPE -----------------------------------------------------
+# by groups 
+
+
+rm(chainList,filteredList,preds)
+VP_1950 = computeVariancePartitioning(fitSepTF,start=1950)
+# split by groups 
+names <- VP_1950$groupnames
+VP_split_1950 = computeVariancePartitioning(fitSepTF,start = 1950,
+                                            group = c(1,1,
+                                                      2,2,
+                                                      3,3),
+                                            groupnames = c('temperature',
+                                                           'precipitation',
+                                                           'landscape'))
+# split by seasons
+VP_season_1950 = computeVariancePartitioning(fitSepTF,start = 1950,
+                                             group = c(1,2,
+                                                       1,2,
+                                                       3,3),
+                                             groupnames = c('winter',
+                                                            'breeding',
+                                                            'landscape'))
+
+{
+  pdf(file=file.path(input,'results','VP_full.pdf'),
+      width = 8,
+      height = 6)
+  
+  default_margins <- par("mar")
+  default_margins
+  #> [1] 5.1 4.1 4.1 2.1
+  
+  # Make the bottom margin larger
+  new_margins <- default_margins + c(0, 0, 0, 0)
+  par(mar = new_margins)
+  
+  plotVariancePartitioning(fitSepTF,
+                           VP_1950,
+                           cols = c('firebrick3',
+                                    'firebrick1',
+                                    'dodgerblue3',
+                                    'dodgerblue1',
+                                    'goldenrod2',
+                                    'goldenrod1',
+                                    'cornsilk2',
+                                    'cornsilk3'),
+                           las = 2,
+                           border = NA,
+                           space=0,
+                           axisnames=F,
+                           #legend.text=F,
+                           ann=T)
+  
+  plotVariancePartitioning(fitSepTF,VP_split_1950,
+                           cols = c('firebrick3',
+                                    'dodgerblue3',
+                                    'goldenrod2',
+                                    'cornsilk2',
+                                    'cornsilk3'),
+                           las = 2,
+                           border = NA,
+                           space=0,
+                           axisnames=F,
+                           #legend.text=F,
+                           ann=T)
+  
+  plotVariancePartitioning(fitSepTF,VP_season_1950,
+                           cols = c('lightblue',
+                                    'lightgreen',
+                                    'goldenrod2',
+                                    'cornsilk2',
+                                    'cornsilk3'),
+                           las = 2,
+                           border = NA,
+                           space=0,
+                           axisnames=F,
+                           #legend.text=F,
+                           ann=T)
+  
+  dev.off()
+}
+
+t <- VP_split$vals
+
+sp <- colnames(t)
+t[]
+
+
 # VARIANCE PARTITIONING PER GUILD  ----------------------------------------
 colnames(VP_1900$vals)
 
@@ -546,11 +679,11 @@ head(VP_1900$vals)
 
 # how much traits explain their niches
 # mostly the different proportional land-use classes 
-VP$R2T$Beta
+VP_1950$R2T$Beta
 
 # how much of the traits propagate into explaining the distributions 
 # 13% of occurrence is explained by the traits 
-VP$R2T$Y
+VP_1950$R2T$Y
 
 # parameter estimates for environments 
 postBeta = getPostEstimate(fitSepTF, parName = "Beta")
@@ -558,18 +691,13 @@ postBeta$mean[,1]
 postBeta$support[,1]
 postBeta$support[,1]
 
-
-  
-  
 plotBeta(fitSepTF,post = postBeta, 
          param = "Sign", supportLevel = 0.95,
-         SpeciesOrder = 'Vector',
-         SpVector = focal_species,
          spNamesNumber = c(F,F))
 
 
 postGamma = getPostEstimate(fitSepTF,parName = 'Gamma')
-plotGamma(fitSepTF, post=postGamma, param="Sign", supportLevel = 0.95)
+plotGamma(fitSepTF, post=postGamma, param="Support", supportLevel = 0.95)
 #plotGamma(fitSepTF, post=postGamma, param="Mean", supportLevel = 0.95)
 
 postGamma_select <- lapply(postGamma,function(x) x[2:8,])
@@ -857,8 +985,8 @@ for(focal_guild in unique(tr$foraging_guild_consensus)){
 )
 }
 
-plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign",
-                 spVector = focal_species)
+plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign")
+
 plotBeta(fitSepTF,postBeta,
          param='Sign',supportLevel=0.95)
 
