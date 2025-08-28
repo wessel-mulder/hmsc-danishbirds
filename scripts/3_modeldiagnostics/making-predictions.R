@@ -66,24 +66,25 @@ if(length(covariates)>0){
     load(outfile)
   } else {
     preds <- vector('list',length(covariates))
-    for(k in 1:(length(covariates))){
-      covariate = covariates[[k]]
+    mclapply(covariates, function(covariate) {
+      ptm <- proc.time()  # start timing
       
-      Gradient = constructGradient(m,focalVariable = covariate, ngrid=30)
-      cat('Gradient constructed \n')
-      cat("Making predictions based on Gradient 1:\n")
-      predY = predict(fitSepTF, Gradient=Gradient, expected = TRUE)
-      computational.time = proc.time() - ptm
+      Gradient <- constructGradient(m, focalVariable = covariate, ngrid = 30)
+      predY <- predict(fitSepTF, Gradient = Gradient, expected = TRUE)
       
-      cli_progress_done()
-      computational.time = proc.time() - ptm
-      Preds[[k]]$predY = predY 
-      Preds[[k]]$Gradient = Gradient
-    }
-    names(Preds) = covariates
-    save(Preds, file = outfile)
-    computational.time = proc.time() - ptm_tot
-    cat(sprintf("Total Time taken: %.2f s \nCurrent time: %s\n\n", computational.time[3],format(Sys.time(), "%H:%M:%S")))
+      # Save each covariate separately
+      saveRDS(list(predY = predY, Gradient = Gradient),
+              file = file.path(output_dir, paste0("Pred_", covariate, ".rds")))
+      
+      #Compute elapsed time
+      computational.time <- proc.time() - ptm
+      cat(sprintf("[%s] Time taken: %.2f s | Current time: %s\n",
+                  covariate, computational.time[3], format(Sys.time(), "%H:%M:%S")))
+      
+      
+      return(covariate)  # optional: just to keep track in the list
+    }, mc.cores = nCores)
+
   }
 }
 
