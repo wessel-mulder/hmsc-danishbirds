@@ -88,18 +88,5 @@ if(length(covariates)>0){
   }
 }
 
-# Gradient = constructGradient(fitSepTF,focalVariable = "tmean_winter",ngrid=30)
-# pred = predict(fitSepTF,Gradient = Gradient,expected = T)
-# 
-# length(unique(fitSepTF$TrData$foraging_guild_consensus))
-# Gradient$XDataNew
-# 
-# predY = predict(fitSepTF, XData=Gradient$XDataNew, studyDesign=Gradient$studyDesignNew,
-#                 ranLevels=Gradient$rLNew, expected=TRUE)
-# plotGradient(fitSepTF, Gradient, pred=predY, measure="S", showData = TRUE)
-# 
-# preds <- computePredictedValues(fitSepTF,partition.sp = 1,thin=20)
-
-# Close sinks when done
 sink(type = "output")
 close(log_con)
