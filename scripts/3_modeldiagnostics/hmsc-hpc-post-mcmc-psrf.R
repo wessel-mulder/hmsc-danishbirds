@@ -269,6 +269,9 @@ join <- merge(semi,occs,by='species')
 par(mfrow=c(1,1),
     mar = c(10,4,4,2))
 
+sort_desc_tjur <- join[order(join$tjur,decreasing = F),]
+
+
 ### ORDER BY NR OF SPECIES IN GUILD 
 join_foraging <- join %>%
   group_by(foraging_guild_consensus) %>%
@@ -308,13 +311,59 @@ plot(auc~occs,
        data = join,
      main = 'AUC ~ nr of occurrences',
      xlab = 'Occurrences',
-     ylab = 'AUC')
+     ylab = 'AUC',
+     ylim=c(0.75,1),
+     xlim=c(0,6500))
+plot(auc~occs,
+     data = join[join$occs>10,],
+     main = 'AUC ~ nr of occurrences (occs>10)',
+     xlab = 'Occurrences',
+     ylab = 'AUC',
+     ylim=c(0.75,1),
+     xlim=c(0,6500))
+plot(auc~occs,
+     data = join[join$occs>20,],
+     main = 'AUC ~ nr of occurrences (occs>20)',
+     xlab = 'Occurrences',
+     ylab = 'AUC',
+     ylim=c(0.75,1),
+     xlim=c(0,6500))
+plot(auc~occs,
+     data = join[join$occs>100,],
+     main = 'AUC ~ nr of occurrences (occs>100)',
+     xlab = 'Occurrences',
+     ylab = 'AUC',
+     ylim=c(0.75,1),
+     xlim=c(0,6500))
+
 plot(tjur~occs,
      data = join,
      main = 'TjurR2 ~ nr of occurrences',
      xlab = 'Occurrences',
-     ylab = 'TjurR2')
-
+     ylab = 'TjurR2',
+     ylim = c(0,0.65),
+     xlim=c(0,6500))
+plot(tjur~occs,
+     data = join[join$occs>10,],
+     main = 'TjurR2 ~ nr of occurrences (occs>10)',
+     xlab = 'Occurrences',
+     ylab = 'TjurR2',
+     ylim = c(0,0.65),
+     xlim=c(0,6500))
+plot(tjur~occs,
+     data = join[join$occs>20,],
+     main = 'TjurR2 ~ nr of occurrences (occs>20)',
+     xlab = 'Occurrences',
+     ylab = 'TjurR2',
+     ylim = c(0,0.65),
+     xlim=c(0,6500))
+plot(tjur~occs,
+     data = join[join$occs>100,],
+     main = 'TjurR2 ~ nr of occurrences (occs>100)',
+     xlab = 'Occurrences',
+     ylab = 'TjurR2',
+     ylim = c(0,0.65),
+     xlim=c(0,6500))
 
 boxplot(auc~foraging_guild_consensus,data=join,
         las = 3,                # rotate labels if long
