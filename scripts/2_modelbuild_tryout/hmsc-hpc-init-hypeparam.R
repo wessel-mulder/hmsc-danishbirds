@@ -47,23 +47,27 @@ X <- read.csv(file.path(input,'data/1_preprocessing/X_environmental/X_Environmen
 X <- X[sort(row.names(X)),]
 
 # keep only sites with data  
+sites_with_NA <- rownames(X)[apply(X, 1, function(x) any(is.na(x)))]
+X[rownames(X) %in% sites_with_NA,]
+
+rows <- X[rownames(X) %in% sites_with_NA,]
+
+# for each row, get the column names where value == 1
+cols_by_row <- lapply(sites_with_NA, function(r) {
+  colnames(Y)[Y[r, ] == 1]
+})
+
+# name the list by row
+names(cols_by_row) <- sites_with_NA
+
+cols_by_row
+cols_by_row$
+
 X <- na.omit(X)
 sites_actual <- row.names(X)
 
 # --> LOAD OCCURRENCES 
 Y <- read.csv(file.path(input,'data/1_preprocessing/Y_occurrences/Y_occurrences.csv'),row.names=1)
-# merge subspecies for now 
-# Merge Motacilla_alba_yarrellii into Motacilla_alba
-Y$Motacilla_alba <- pmax(Y$Motacilla_alba, Y$Motacilla_alba_yarrellii, na.rm = TRUE)
-Y$Motacilla_alba_yarrellii <- NULL  # Remove the subspecies column
-
-# Merge Motacilla_flava_flavissima into Motacilla_flava
-Y$Motacilla_flava <- pmax(Y$Motacilla_flava, Y$Motacilla_flava_flavissima, na.rm = TRUE)
-Y$Motacilla_flava_flavissima <- NULL  # Remove the subspecies column
-
-# rename acanthis to species name
-names(Y)[names(Y) == "Acanthis_flammea_cabaret"] <- "Acanthis_flammea"
-Y <- Y[sort(row.names(Y)), sort(colnames(Y))]
 
 # remove sites without data 
 Y <- Y[row.names(Y) %in% sites_actual,]
@@ -71,12 +75,6 @@ Y <- Y[row.names(Y) %in% sites_actual,]
 # --> LOAD TRAITS 
 Tr <- read.csv(file.path(input,"data/1_preprocessing/Tr_aits/traits-guild_migration.csv"),row.names = 2)[,c(2,3)]
 Tr <- Tr[sort(row.names(Tr)),]
-Tr['Motacilla_alba_yarrellii',] == Tr['Motacilla_alba',] # TRUE 
-Tr['Motacilla_flava_flavissima',] == Tr['Motacilla_flava',] # MIGRATION FALSE 
-Tr <- Tr[!(rownames(Tr) %in% c('Motacilla_alba_yarrellii','Motacilla_flava_flavissima')), ]
-rownames(Tr)[rownames(Tr) == "Acanthis_flammea_cabaret"] <- "Acanthis_flammea"
-
-
 
 # --> LOAD STUDY DESIGN 
 Design <- read.csv(file.path(input,"data/1_preprocessing/design/studyDesign.csv"),row.names=5)

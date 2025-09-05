@@ -53,17 +53,32 @@ for(species in unique(data$latin_nospace_DOF)){
   if (species == unique(data$latin_nospace_DOF)[length(unique(data$latin_nospace_DOF))]) {
     df2[is.na(df2)] <- 0
   }
+  
 }
+
+# merge subspecies 
+# Merge Motacilla_alba_yarrellii into Motacilla_alba
+df2$Motacilla_alba <- pmax(df2$Motacilla_alba, df2$Motacilla_alba_yarrellii, na.rm = TRUE)
+df2$Motacilla_alba_yarrellii <- NULL  # Remove the subspecies column
+
+# Merge Motacilla_flava_flavissima into Motacilla_flava
+df2$Motacilla_flava <- pmax(df2$Motacilla_flava, df2$Motacilla_flava_flavissima, na.rm = TRUE)
+df2$Motacilla_flava_flavissima <- NULL  # Remove the subspecies column
+
+# rename acanthis to species name
+names(df2)[names(df2) == "Acanthis_flammea_cabaret"] <- "Acanthis_flammea"
+df2 <- df2[sort(row.names(df2)), sort(colnames(df2))]
 
 # LOADING TRAITS 
 traits <- read.csv('data/1_preprocessing/Tr_aits/traits-guild_migration.csv')
-species_list <- traits$latin_DOF_underscores #199 individuals 
+species_list <- traits$latin_DOF_underscores #197 individuals 
 
 # SELECT ONLY SPECIES IN THE SPECIES LIST 
 occurrences_subset <- df2 %>%
   select(all_of(c('survey',species_list))) 
 
-# 200 colums  correct, because 1 one of them is the survey 
+# 198 colums  correct, because 1 one of them is the survey 
+# we have 197 species but 1 of them is the survey
 
 head(occurrences_subset,5)
 write.csv(occurrences_subset,
