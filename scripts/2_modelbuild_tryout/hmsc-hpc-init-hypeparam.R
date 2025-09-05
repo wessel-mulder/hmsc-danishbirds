@@ -1,7 +1,7 @@
 rm(list = ls())
 
 # Define MCMC settings
-subset_env_vars <- 1 # flip to 0 to reverse subset
+subset_env_vars <- 0 # flip to 0 to reverse subset
 knotDistance = 0.2 # knotdistances 
 nChains <- 4
 verbose <- 100
@@ -113,8 +113,9 @@ xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-thin <- c(10,50,100)
-nSamples <- c(250,500,1000)
+thin <- c(100)
+nSamples <- c(1000)
+transient <- 50000
 
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
@@ -123,8 +124,6 @@ for(i in thin){
   
   for(j in nSamples){
     print(j)
-
-    transient <- i*j
 
     params <- list(
     nChains = nChains,
