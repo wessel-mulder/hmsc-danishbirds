@@ -1,4 +1,4 @@
-input <- 'tmp_rds/mods-tuning-hypeparam/2025-08-22_10-09-28_samples_250_thin_100/'
+input <- 'tmp_rds/mods-single/2025-08-29_15-52-09_samples_1000_thin_100/'
 subset_sppairs <- T
 reset <- 1
 if(reset){
@@ -70,6 +70,8 @@ mpost <- convertToCodaObject(fitSepTF,start=1)
 # Get number of species (used for dimensions if needed)
 ns <- ncol(fitSepTF$Y)
 
+summary(mpost)
+
 ### OMEGA PREPROCESSING
 omegas = mpost$Omega
 maxOmega = 1000
@@ -85,6 +87,7 @@ if (z > maxOmega) {
   omega_k_1 <- omega_pre_1
   omega_k_2 <- omega_pre_2
 }
+gelman.diag(mpost$Omega[[1]])
 
 # PLOTTING PARAMETERS 
 params <- list(mpost$Beta,mpost$Gamma,mpost$Rho,mpost$V,
@@ -314,52 +317,10 @@ plot(auc~occs,
      ylab = 'AUC',
      ylim=c(0.75,1),
      xlim=c(0,6500))
-plot(auc~occs,
-     data = join[join$occs>10,],
-     main = 'AUC ~ nr of occurrences (occs>10)',
-     xlab = 'Occurrences',
-     ylab = 'AUC',
-     ylim=c(0.75,1),
-     xlim=c(0,6500))
-plot(auc~occs,
-     data = join[join$occs>20,],
-     main = 'AUC ~ nr of occurrences (occs>20)',
-     xlab = 'Occurrences',
-     ylab = 'AUC',
-     ylim=c(0.75,1),
-     xlim=c(0,6500))
-plot(auc~occs,
-     data = join[join$occs>100,],
-     main = 'AUC ~ nr of occurrences (occs>100)',
-     xlab = 'Occurrences',
-     ylab = 'AUC',
-     ylim=c(0.75,1),
-     xlim=c(0,6500))
 
 plot(tjur~occs,
      data = join,
      main = 'TjurR2 ~ nr of occurrences',
-     xlab = 'Occurrences',
-     ylab = 'TjurR2',
-     ylim = c(0,0.65),
-     xlim=c(0,6500))
-plot(tjur~occs,
-     data = join[join$occs>10,],
-     main = 'TjurR2 ~ nr of occurrences (occs>10)',
-     xlab = 'Occurrences',
-     ylab = 'TjurR2',
-     ylim = c(0,0.65),
-     xlim=c(0,6500))
-plot(tjur~occs,
-     data = join[join$occs>20,],
-     main = 'TjurR2 ~ nr of occurrences (occs>20)',
-     xlab = 'Occurrences',
-     ylab = 'TjurR2',
-     ylim = c(0,0.65),
-     xlim=c(0,6500))
-plot(tjur~occs,
-     data = join[join$occs>100,],
-     main = 'TjurR2 ~ nr of occurrences (occs>100)',
      xlab = 'Occurrences',
      ylab = 'TjurR2',
      ylim = c(0,0.65),
@@ -470,20 +431,20 @@ preds <- computePredictedValues(fitSepTF,partition.sp = 1,thin=20)
 
 
 rm(chainList,filteredList,preds)
-VP_1950 = computeVariancePartitioning(fitSepTF,start=1950)
+VP_1950 = computeVariancePartitioning(fitSepTF,start = 900)
 # split by groups 
 names <- VP_1950$groupnames
-VP_split_1950 = computeVariancePartitioning(fitSepTF,start = 1950,
+VP_split_1950 = computeVariancePartitioning(fitSepTF,start = 900,
                                             group = c(1,1,1,
                                                       2,2,2,
                                                       3,3,
-                                                      4,4,4,4,4,4,4,4),
+                                                      rep(4,8)),
                                             groupnames = c('temperature',
                                                            'precipitation',
                                                            'landscape',
                                                            'land-use classes'))
 # split by seasons
-VP_season_1950 = computeVariancePartitioning(fitSepTF,start = 1950,
+VP_season_1950 = computeVariancePartitioning(fitSepTF,start = 900,
                                              group = c(1,2,3,
                                                        1,2,3,
                                                        4,4,
@@ -740,10 +701,12 @@ postBeta$mean[,1]
 postBeta$support[,1]
 postBeta$support[,1]
 
-plotBeta(fitSepTF,post = postBeta, 
-         param = "Sign", supportLevel = 0.95,
-         spNamesNumber = c(F,F))
+pdf(file=file.path(input, "results", "beta.pdf"), 
+    width=10, height=6)
 
+plotBeta(fitSepTF,post = postBeta, 
+         param = "Sign", supportLevel = 0.9)
+dev.off()
 
 postGamma = getPostEstimate(fitSepTF,parName = 'Gamma')
 plotGamma(fitSepTF, post=postGamma, param="Support", supportLevel = 0.95)
@@ -827,6 +790,10 @@ predY = predict(fitSepTF,Gradient = Gradient, expected = TRUE,
 #' plotPostEstimate(m = TCP_Fit, parName = "Omega", plotType = "Sign", returnType = "dataframe")
 #'
 #' @export
+
+parName <- 'Beta'
+plotType <- 'Sign'
+m <- fitSepTF
 plotPostEstimate <- function(m,
                              parName = c("Beta", "Gamma", "Omega"),
                              plotType = c("Sign", "Mean"),
@@ -866,6 +833,8 @@ plotPostEstimate <- function(m,
     rowNames <- m$covNames  # Covariates (use new names if provided)
     if(length(spVector)){
       colNames <- spVector
+    }else{
+      colNames <- m$spNames
     }
     rowLabel <- "Covariates"
     colLabel <- "Species"
@@ -1034,7 +1003,7 @@ for(focal_guild in unique(tr$foraging_guild_consensus)){
 )
 }
 
-plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign")
+plotPostEstimate(fitSepTF, parName = "Omega", plotType = "Sign")
 
 plotBeta(fitSepTF,postBeta,
          param='Sign',supportLevel=0.95)
@@ -1042,11 +1011,18 @@ plotBeta(fitSepTF,postBeta,
 plotGamma(fitSepTF,postGamma,
          param='Sign',supportLevel=0.95)
 
-focal_guild <- 'Grazing waterfowl'
-focal_species <- rownames(tr)[tr$foraging_guild_consensus==focal_guild]
-plotPostEstimate(fitSepTF, parName = "Gamma", plotType = "Sign")
+tr <- fitSepTF$TrData
+
+### MIGRATION SPECIFIC 
+focal_migrate <- 'sedentary'
+focal_species <- rownames(tr)[tr$Migration_AVONET==focal_migrate]
 plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign",
-                 spVector = focal_species,
-                 main = focal_guild)
+                 spVector = focal_species)
+plotPostEstimate(fitSepTF, parName = "Gamma", plotType = "Sign",
+                 supportLevel = 0.95)
+
+tree <- fitSepTF$phyloTree
+plot(tree,
+     cex = 1)
 
 
