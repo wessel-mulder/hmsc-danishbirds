@@ -1,3 +1,22 @@
+# PLOTTING PARAMETERS 
+# official names 
+names <- c('beta','gamma','rho','V',
+           'alpha_space','alpha_time',
+           'omega_raw','omega_resid')
+
+# plot names 
+full_names <- c("Beta - Species x Environment",
+                "Gamma - Traits x Environment",
+                "Rho - Phylogeny",
+                "V - Variation",
+                "Alpha - Spatial",
+                "Alpha - Time",
+                "Omega1 - Raw associations",
+                "Omega2 - Residual associations")
+
+# plot colors 
+cols <- c('green4','purple4','yellow4','orange4','ivory','ivory','blue4','blue4')
+
 all_psrf <- list()
 all_ess  <- list()
 
