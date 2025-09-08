@@ -112,6 +112,7 @@ xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
 info <- apply(Y,2,sum)
 table(info)
 
+setdiff(colnames(Y),rownames(Tr))
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
 thin <- c(100)

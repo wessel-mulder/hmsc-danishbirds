@@ -12,6 +12,8 @@ traits_subset <- traits_full[ rowSums(traits_full[, c("not_breeding", "introduce
 # remove the subspecies 
 traits_subset <- traits_subset[!(traits_subset$Species2_AVONET %in% c('Motacilla alba yarrellii','Motacilla flava flavissima')), ]
 traits_subset$Species2_AVONET[traits_subset$Species2_AVONET == "Acanthis flammea cabaret"] <- "Acanthis flammea"
+traits_subset$latin_DOF[traits_subset$latin_DOF == "Acanthis flammea cabaret"] <- "Acanthis flammea"
+
 
 # underscores to spaces
 traits_subset$latin_DOF_underscores <- gsub(' ','_',traits_subset$latin_DOF)
