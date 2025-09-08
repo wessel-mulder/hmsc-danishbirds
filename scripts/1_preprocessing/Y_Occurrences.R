@@ -71,7 +71,7 @@ df2 <- df2[sort(row.names(df2)), sort(colnames(df2))]
 
 # LOADING TRAITS 
 traits <- read.csv('data/1_preprocessing/Tr_aits/traits-guild_migration.csv')
-species_list <- traits$latin_DOF_underscores #197 individuals 
+species_list <- traits$latin_DOF_underscores #201 individuals 
 
 # SELECT ONLY SPECIES IN THE SPECIES LIST 
 occurrences_subset <- df2 %>%

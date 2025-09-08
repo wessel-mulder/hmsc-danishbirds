@@ -41,7 +41,6 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
 summary(TD)
 
 # LOADING DATA -----------------------------------------------------
-
 # --> LOAD ENVIRONMENT
 X <- read.csv(file.path(input,'data/1_preprocessing/X_environmental/X_Environmental.csv'),row.names=1)
 X <- X[sort(row.names(X)),]
@@ -50,19 +49,19 @@ X <- X[sort(row.names(X)),]
 sites_with_NA <- rownames(X)[apply(X, 1, function(x) any(is.na(x)))]
 X[rownames(X) %in% sites_with_NA,]
 
-rows <- X[rownames(X) %in% sites_with_NA,]
-
-# for each row, get the column names where value == 1
-cols_by_row <- lapply(sites_with_NA, function(r) {
-  colnames(Y)[Y[r, ] == 1]
-})
-
-# name the list by row
-names(cols_by_row) <- sites_with_NA
-
-cols_by_row
-cols_by_row$
-
+# rows <- X[rownames(X) %in% sites_with_NA,]
+# 
+# # for each row, get the column names where value == 1
+# cols_by_row <- lapply(sites_with_NA, function(r) {
+#   colnames(Y)[Y[r, ] == 1]
+# })
+# 
+# # name the list by row
+# names(cols_by_row) <- sites_with_NA
+# 
+# cols_by_row
+# cols_by_row$
+# 
 X <- na.omit(X)
 sites_actual <- row.names(X)
 
@@ -109,6 +108,10 @@ xycoords <- distinct(xycoords)
 rownames(xycoords) <- xycoords$site
 xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
 
+# number of occurrences, make sure there are no below 5 
+info <- apply(Y,2,sum)
+table(info)
+
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
 thin <- c(100)
@@ -140,7 +143,6 @@ for(i in thin){
       select(tmean_winter,tmean_breeding,
              prec_winter,prec_breeding,
              hh,unique)
-      
   }
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
   TrFormula <- as.formula(paste("~", paste(colnames(Tr), collapse = "+"), sep = " "))
