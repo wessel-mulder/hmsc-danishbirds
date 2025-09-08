@@ -73,7 +73,8 @@ Y <- Y[row.names(Y) %in% sites_actual,]
 
 # --> LOAD TRAITS 
 Tr <- read.csv(file.path(input,"data/1_preprocessing/Tr_aits/traits-guild_migration.csv"),row.names = 2)[,c(2,3)]
-Tr <- Tr[sort(row.names(Tr)),]
+# sort by Y
+Tr <- Tr[colnames(Y), , drop = FALSE]
 
 # --> LOAD STUDY DESIGN 
 Design <- read.csv(file.path(input,"data/1_preprocessing/design/studyDesign.csv"),row.names=5)
@@ -99,7 +100,7 @@ pd_matrix <- cophenetic.phylo(phy)
 pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
 
 # check if species-lists are identical
-table(rownames(pd_matrix) == names(Y))
+setdiff(rownames(pd_matrix),names(Y))
 # stunning 
 
 # get xycoords
@@ -112,7 +113,11 @@ xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
 info <- apply(Y,2,sum)
 table(info)
 
-setdiff(colnames(Y),rownames(Tr))
+# make sure they line up
+all(rownames(Tr) == colnames(Y))
+
+
+
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
 thin <- c(100)
@@ -168,6 +173,8 @@ for(i in thin){
            studyDesign = Design[,c(1,5)], 
            ranLevels = list('site'=struc_space,'year'=struc_time),
            distr='probit')
+  
+  rownames(phy)
   
   ### IN RSTUDIO START SAMPLING 
   if(flagFitR){
