@@ -1,4 +1,6 @@
-mod <- '2025-08-29_15-52-09_samples_1000_thin_100'
+args <- commandArgs(trailingOnly = TRUE)
+
+mod = args[1]
 easy_mode <- 1
 
 # GETTING STARTED ---------------------------------------------------------
@@ -12,12 +14,13 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(colorspace)
   library(vioplot)
   library(dplyr)
+  mod <- '2025-09-08_17-32-13_samples_1000_thin_100'
   input <- file.path('./tmp_rds/mods-single',mod)
   source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
   
 } else {
   message("Running from terminal or non-interactive environment")
-  rstudio = 0
+  rstudio = easy_mode
   library(RColorBrewer,lib="~/Rlibs")
   library(farver,lib="~/Rlibs")
   library(scales,lib="~/Rlibs")
@@ -27,7 +30,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(Hmsc,lib="~/Rlibs")
   library(colorspace,lib="~/Rlibs")
   library(vioplot,lib="~/Rlibs")
-  input <- file.path('~/home/projects/hmsc-danishbirds/tmp-rds',mod)
+  input <- file.path('~/home/projects/hmsc-danishbirds/tmp_rds',mod)
   source_path <- file.path('~/home/projects/hmsc-danishbirds/scripts/3_modeldiagnostics/plotting-scripts')
   
 }
@@ -44,6 +47,10 @@ thin <- params$thin
 transient <- params$transient
 
 # loading the chains 
+if(rstudio ==1){
+  nChains <- nChains - 2
+}
+
 chainList = vector("list", nChains)
 for(cInd in 1:nChains){
   chain_file_path = file.path(input, sprintf("post_chain%.2d_file.rds", cInd-1))
@@ -114,7 +121,8 @@ for(j in seq_along(params)){
   }
   
 }
-
+print(diags$psrf[[3]])
+print(diags$ess[[3]])
 source(file.path(source_path,'psrf-ess-plots.R'))
 source(file.path(source_path,'psrf-ess-singles.R'))
 

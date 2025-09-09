@@ -32,6 +32,7 @@ pdf(file=file.path(input, "results", "PSRF_ESS_combined.pdf"), width=10, height=
 par(mfrow=c(1,1))
 
 # PSRF plot
+print('psrf plot full')
 vioplot(all_psrf, col=cols, main="PSRF across parameters",
         ylim=c(0.99, max(unlist(all_psrf), na.rm=TRUE)),
         xaxt = 'n',ann =  T)
@@ -40,7 +41,7 @@ abline(h=1.1, lty=1, col="red") # warning threshold
 legend('topleft',
        fill = cols,
        full_names)
-
+print('psrf plot threshold')
 vioplot(all_psrf, col=cols, main="PSRF across parameters",
         ylim=c(0.99, 1.1),
         xaxt = 'n',ann =  T)
