@@ -25,6 +25,7 @@ for(i in seq_along(params)){
   all_ess[[ full_names[i] ]]  <- as.numeric(diags$ess[[i]])
 }
 
+
 # init pdf 
 if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results'))}
 pdf(file=file.path(input, "results", "PSRF_ESS_combined.pdf"), width=10, height=6)
@@ -33,6 +34,12 @@ par(mfrow=c(1,1))
 
 # PSRF plot
 print('psrf plot full')
+
+# REMOVE INFINITE VALUES 
+all_psrf <- lapply(all_psrf, function(x) {
+  x[!is.finite(x)] <- NA
+  x
+})
 
 vioplot(all_psrf, col=cols, main="PSRF across parameters",
         ylim=c(0.99, max(unlist(all_psrf), na.rm=TRUE)),

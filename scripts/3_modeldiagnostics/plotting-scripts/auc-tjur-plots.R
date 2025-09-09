@@ -9,8 +9,8 @@ sp <- fitSepTF$spNames
 tr <- fitSepTF$TrData
 
 sp_fits <- data.frame(
-  auc = MF_10$AUC,
-  tjur = MF_10$TjurR2
+  auc = MF$AUC,
+  tjur = MF$TjurR2
 )
 rownames(sp_fits) <- sp
 
@@ -49,12 +49,12 @@ plot.new()
       width = 8,
       height = 6)
   par(mfrow=c(1,1))
-  mean <- mean(MF_10$AUC)
-  hist(MF_10$AUC,main=paste0('Mean AUC across species = ',floor(mean*100)/100),
+  mean <- mean(MF$AUC)
+  hist(MF$AUC,main=paste0('Mean AUC across species = ',floor(mean*100)/100),
        ylab = 'Number of species',
        xlab = 'AUC')
-  mean <- mean(MF_10$TjurR2)
-  hist(MF_10$TjurR2,main=paste0('Mean TjurR2 across species = ',floor(mean*100)/100),
+  mean <- mean(MF$TjurR2)
+  hist(MF$TjurR2,main=paste0('Mean TjurR2 across species = ',floor(mean*100)/100),
        ylab = 'Number of species',
        xlab = 'TjurR2')
   

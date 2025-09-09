@@ -46,10 +46,7 @@ nSamples <- params$nSamples
 thin <- params$thin
 transient <- params$transient
 
-# loading the chains 
-if(rstudio ==1){
-  nChains <- nChains - 2
-}
+
 
 chainList = vector("list", nChains)
 for(cInd in 1:nChains){
@@ -60,12 +57,7 @@ for(cInd in 1:nChains){
   }
 }
 
-# use only 4 chains if running on local computer
-if(rstudio == 1){
-  filteredList <- list(chainList[[1]],chainList[[2]])
-}else if(rstudio == 0){
-  filteredList <- chainList
-}
+filteredList <- chainList
 
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 
@@ -74,7 +66,7 @@ fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 # make smaller for ease in R
 
 if(rstudio == 1){
-  start <- nSamples - 3
+  start <- 1
 }else if(rstudio == 0){
   start <- 1
 } 
@@ -121,21 +113,23 @@ for(j in seq_along(params)){
   }
   
 }
+
 print(diags$psrf[[3]])
 print(diags$ess[[3]])
+
 source(file.path(source_path,'psrf-ess-plots.R'))
 source(file.path(source_path,'psrf-ess-singles.R'))
 
 # AUC / TJUR --------------------------------------------------------------
 # get preds 
-preds  <- computePredictedValues(fitSepTF, start = start)
+preds  <- computePredictedValues(fitSepTF, start = 999)
 MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
 
 source(file.path(source_path,'auc-tjur-plots.R'))
 
 
 # VP ----------------------------------------------------------------------
-VP = computeVariancePartitioning(fitSepTF,start = start)
+VP = computeVariancePartitioning(fitSepTF,start = 999)
 
 # split by groups 
 #names <- VP$groupnames
