@@ -1,6 +1,11 @@
 args <- commandArgs(trailingOnly = TRUE)
 
 mod = args[1]
+psrfess_flag <- 0 
+fit_flag <- 1
+VP_flag <- 1
+pred_flag <- 1
+
 
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
@@ -58,10 +63,11 @@ filteredList <- chainList
 
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 
+print('model succesfully loaded')
 # PSRF / ESS  ----------------------------------------------------
 # Convert model output to coda format for MCMC diagnostics
 # make smaller for ease in R
-
+if(psrfess_flag == 1){
 mpost <- convertToCodaObject(fitSepTF)
 
 # objects in the list 
@@ -109,11 +115,16 @@ for(j in seq_along(params)){
 if(!dir.exists(file.path(input,'model-outputs'))) {dir.create(file.path(input,'model-outputs'))}
 saveRDS(diags,file=file.path(input,'model-outputs','psrf-ess.rds'))
 
-
+print('psrf and ess succesfully saved')
+}else{
+  print('psrf and ess skipped')
+}
 # AUC-TJUR ----------------------------------------------------------------
-preds  <- computePredictedValues(fitSepTF)
+preds  <- computePredictedValuesParallel(fitSepTF,expected=T)
+print('preds succesfully made')
 MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
 saveRDS(MF,file=file.path(input,'model-outputs','model-fit.rds'))
+print('model fit succesfully saved')
 
 # VP ----------------------------------------------------------------
 VP = computeVariancePartitioning(fitSepTF)
@@ -145,12 +156,17 @@ saveRDS(VP,file=file.path(input,'model-outputs','VP-full.rds'))
 saveRDS(VP_split,file=file.path(input,'model-outputs','VP-split.rds'))
 saveRDS(VP_season,file=file.path(input,'model-outputs','VP-season.rds'))
 
+print('variance partitions succesfully saved')
+
 
 # TEST A PREDICTION -------------------------------------------------------
 covariates <- c('tmean_year','prec_year')
 mclapply(covariates, function(covariate) {
 
+  print('starting gradient')
   Gradient <- constructGradient(m, focalVariable = covariate, ngrid = 30)
+  print('starting predictions')
+
   predY <- predict(fitSepTF, Gradient = Gradient, expected = TRUE)
   
   # Save each covariate separately
@@ -159,6 +175,7 @@ mclapply(covariates, function(covariate) {
   
 }, mc.cores = 2)
 
+print('predictions succesfully saved')
 
 
 

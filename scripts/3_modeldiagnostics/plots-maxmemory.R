@@ -20,7 +20,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   
 } else {
   message("Running from terminal or non-interactive environment")
-  rstudio = easy_mode
+  rstudio = 0
   library(RColorBrewer,lib="~/Rlibs")
   library(farver,lib="~/Rlibs")
   library(scales,lib="~/Rlibs")
@@ -122,18 +122,18 @@ source(file.path(source_path,'psrf-ess-singles.R'))
 
 # AUC / TJUR --------------------------------------------------------------
 # get preds 
-preds  <- computePredictedValues(fitSepTF, start = 999)
+preds  <- computePredictedValues(fitSepTF, start = 1)
 MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
 
 source(file.path(source_path,'auc-tjur-plots.R'))
 
 
 # VP ----------------------------------------------------------------------
-VP = computeVariancePartitioning(fitSepTF,start = 999)
+VP = computeVariancePartitioning(fitSepTF,start = 1)
 
 # split by groups 
 #names <- VP$groupnames
-VP_split = computeVariancePartitioning(fitSepTF,start = start,
+VP_split = computeVariancePartitioning(fitSepTF,start = 1,
                                             group = c(1,1,1,
                                                       2,2,2,
                                                       3,3,
@@ -143,7 +143,7 @@ VP_split = computeVariancePartitioning(fitSepTF,start = start,
                                                            'landscape',
                                                            'land-use classes'))
 # split by seasons
-VP_season = computeVariancePartitioning(fitSepTF,start = start,
+VP_season = computeVariancePartitioning(fitSepTF,start = 1,
                                              group = c(1,2,3,
                                                        1,2,3,
                                                        4,4,

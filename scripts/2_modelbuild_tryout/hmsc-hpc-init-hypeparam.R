@@ -6,6 +6,11 @@ knotDistance = 0.2 # knotdistances
 nChains <- 4
 verbose <- 100
 
+thin <- c(1000)
+nSamples <- c(250)
+transient <- 50000
+
+
 
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
@@ -120,9 +125,6 @@ all(rownames(Tr) == colnames(Y))
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-thin <- c(100)
-nSamples <- c(1000)
-transient <- 50000
 
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")

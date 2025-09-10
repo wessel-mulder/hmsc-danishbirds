@@ -35,10 +35,13 @@ par(mfrow=c(1,1))
 # PSRF plot
 print('psrf plot full')
 
-# REMOVE INFINITE VALUES 
+# REMOVE INFINITE VALUES but throw a warning
+lapply(all_psrf,function(x))
+
 all_psrf <- lapply(all_psrf, function(x) {
-  x[!is.finite(x)] <- NA
-  x
+summary(x)
+x[!is.finite(x)] <- NA
+x
 })
 
 vioplot(all_psrf, col=cols, main="PSRF across parameters",
