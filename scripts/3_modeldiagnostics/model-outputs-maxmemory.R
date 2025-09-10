@@ -17,6 +17,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(colorspace)
   library(vioplot)
   library(dplyr)
+  library(abind)
   mod <- '2025-09-08_17-32-13_samples_1000_thin_100'
   input <- file.path('./tmp_rds/mods-single',mod)
   source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
@@ -32,6 +33,8 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(Hmsc,lib="~/Rlibs")
   library(colorspace,lib="~/Rlibs")
   library(vioplot,lib="~/Rlibs")
+  library(abind,lib="~/Rlibs")
+  
   input <- file.path('~/home/projects/hmsc-danishbirds/tmp_rds',mod)
   source_path <- file.path('~/home/projects/hmsc-danishbirds/scripts/3_modeldiagnostics/plotting-scripts')
   
@@ -120,14 +123,71 @@ print('psrf and ess succesfully saved')
   print('psrf and ess skipped')
 }
 # AUC-TJUR ----------------------------------------------------------------
-preds  <- computePredictedValuesParallel(fitSepTF,expected=T)
-print('preds succesfully made')
+### HEAVY 
+for(thin in c(4000,2000,1000,100,50,20)){
+preds  <- pcomputePredictedValues(fitSepTF,expected=T,thin=thin)
 MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
+par(mfrow=c(3,1))
+hist(MF$AUC,
+     main=paste0('Thin = ',paste0(thin),' - Mean AUC = ',round(mean(MF$AUC),2)))
+hist(MF$TjurR2,
+     main=paste0('Thin = ',paste0(thin),' - Mean TjurR2 = ',round(mean(MF$TjurR2),2)))
+hist(MF$RMSE,
+     main=paste0('Thin = ',paste0(thin),' - Mean RMSE = ',round(mean(MF$RMSE),2)))
+}
 saveRDS(MF,file=file.path(input,'model-outputs','model-fit.rds'))
 print('model fit succesfully saved')
 
+# ### CHUNKY
+# chunk_size <- 10
+# 
+# # get postlist
+# postlist <- poolMcmcChains(fitSepTF$postList)
+# idx_chunks[1]
+# summary(postlist[idx_chunks[[2]]])
+# postlist[[2]]
+# 
+# length_pl <- length(postlist)
+# 
+# # get chunks
+# idx_chunks <- split(1:length_pl, ceiling(seq_along(1:length_pl)/chunk_size))
+# 
+# # parallelize
+# idx_chunks <- idx_chunks[1:2]
+# 
+# preds_chunk <- parallel::mclapply(idx_chunks, function(chunk) {
+#   sub_postlist <- postlist[chunk]
+#   predict(fitSepTF,sub_postlist)
+# }, mc.cores = 4)  # adjust cores to liking
+# 
+# abind(preds_chunk,along=3)
+# 
+# MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
+# ns = dim(fitSepTF$Y)[2]
+# RMSE = rep(NA,ns)
+# for (i in 1:ns){
+#   RMSE[i] = sqrt(mean((fitSepTF$Y[,i]-preds[,i])^2, na.rm=TRUE))
+# }
+# 
+# median2 = function(x){return (median(x,na.rm=TRUE))}
+# mean2 = function(x){return (mean(x,na.rm=TRUE))}
+# 
+# mPredY = matrix(NA, nrow=fitSepTF$ny, ncol=fitSepTF$ns)
+# sel = fitSepTF$distr[,1]==3
+# if (sum(sel)>0){
+#   mPredY[,sel] = as.matrix(apply(abind(preds[,sel,,drop=FALSE], along=3),
+#                                  c(1,2), median2))
+# }
+# sel = !fitSepTF$distr[,1]==3
+# if (sum(sel)>0){
+#   mPredY[,sel] = as.matrix(apply(abind(preds[,sel,,drop=FALSE], along=3),
+#                                  c(1,2), mean2))
+# }
+
+
 # VP ----------------------------------------------------------------
-VP = computeVariancePartitioning(fitSepTF)
+postlist <- poolMcmcChains(fitSepTF,thin = 1000)
+VP = computeVariancePartitioning(postlist)
 
 # split by groups 
 #names <- VP$groupnames
@@ -161,10 +221,12 @@ print('variance partitions succesfully saved')
 
 # TEST A PREDICTION -------------------------------------------------------
 covariates <- c('tmean_year','prec_year')
-mclapply(covariates, function(covariate) {
+covariate <- covariates[1]
+#parallel::mclapply(covariates, function(covariate) {
 
   print('starting gradient')
-  Gradient <- constructGradient(m, focalVariable = covariate, ngrid = 30)
+  Gradient <- constructGradient(m, focalVariable = covariate, ngrid = 30,
+                                non.focalVariables = list(tmean_winter = 0))
   print('starting predictions')
 
   predY <- predict(fitSepTF, Gradient = Gradient, expected = TRUE)
@@ -173,9 +235,10 @@ mclapply(covariates, function(covariate) {
   saveRDS(list(predY = predY, Gradient = Gradient),
           file = file.path(input,'model-outputs', paste0("pred_", covariate, ".rds")))
   
-}, mc.cores = 2)
+#}, mc.cores = 2)
 
 print('predictions succesfully saved')
+
 
 
 
