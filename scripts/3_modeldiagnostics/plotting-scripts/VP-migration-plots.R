@@ -11,7 +11,7 @@ for(i in seq_along(VPs)){
   
   par(mar = c(15,5,5,15))
   
-  Tr <- fitSepTF$TrData
+  Tr <- m$TrData
   guilds <- unique(Tr$Migration_AVONET)
   
   for(g in guilds){

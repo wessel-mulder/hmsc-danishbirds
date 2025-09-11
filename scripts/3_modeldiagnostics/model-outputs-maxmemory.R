@@ -1,10 +1,14 @@
 args <- commandArgs(trailingOnly = TRUE)
 
 mod = args[1]
-psrfess_flag <- 0 
-fit_flag <- 1
-VP_flag <- 1
-pred_flag <- 1
+n_cores = args[2]
+
+# other flags
+psrfess_flag <- args[3]
+fit_flag <- args[4]
+VP_flag <- args[5]
+pred_flag <- args[6]
+sp_pred_flag <- args[7]
 
 
 # GETTING STARTED ---------------------------------------------------------
@@ -70,7 +74,8 @@ print('model succesfully loaded')
 # PSRF / ESS  ----------------------------------------------------
 # Convert model output to coda format for MCMC diagnostics
 # make smaller for ease in R
-if(psrfess_flag == 1){
+psrf_ess_output<-file.path(input,'model-outputs','psrf-ess.rds')
+if (psrfess_flag == 1 || !file.exists(psrf_ess_output)) {
 mpost <- convertToCodaObject(fitSepTF)
 
 # objects in the list 
@@ -85,9 +90,11 @@ for(j in seq_along(params)){
   print(j)
   mat <- params[[j]]
   ncols <- ncol(mat[[1]]) # get ncol 
-  
+  print(ncols)
+
   # process in chunks if ncols > 1
   if(length(ncols)){
+    print('entering the loop')
     idx_chunks <- split(1:ncols, ceiling(seq_along(1:ncols)/chunk_size))
     
     psrf_list <- list()
@@ -99,7 +106,7 @@ for(j in seq_along(params)){
         psrf = gelman.diag(mat[,cols], multivariate=FALSE)$psrf[,1],
         ess  = effectiveSize(mat[,cols])
       )
-    }, mc.cores = 4)  # adjust cores to liking
+    }, mc.cores = n_cores)  # adjust cores to liking
     
     # Combine
     psrf_list <- lapply(results, `[[`, "psrf")
@@ -108,7 +115,11 @@ for(j in seq_along(params)){
     diags$psrf[[j]] <- unlist(psrf_list)
     diags$ess[[j]]  <- unlist(ess_list)
   }else{
-    diags$psrf[[j]] <- gelman.diag(mat, multivariate=FALSE)$psrf[,1]
+    print('not in the loop')
+    print(mat)
+    summary(mat)
+    #diags$psrf[[j]] <- gelman.diag(mat, multivariate=FALSE)$psrf[,1]
+    print('trying ess')
     diags$ess[[j]] <- effectiveSize(mat)
   }
   
@@ -116,28 +127,25 @@ for(j in seq_along(params)){
 
 # init pdf 
 if(!dir.exists(file.path(input,'model-outputs'))) {dir.create(file.path(input,'model-outputs'))}
-saveRDS(diags,file=file.path(input,'model-outputs','psrf-ess.rds'))
-
+saveRDS(diags,file=psrf_ess_output)
 print('psrf and ess succesfully saved')
 }else{
   print('psrf and ess skipped')
 }
-# AUC-TJUR ----------------------------------------------------------------
-### HEAVY 
-for(thin in c(4000,2000,1000,100,50,20)){
-preds  <- pcomputePredictedValues(fitSepTF,expected=T,thin=thin)
-MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
-par(mfrow=c(3,1))
-hist(MF$AUC,
-     main=paste0('Thin = ',paste0(thin),' - Mean AUC = ',round(mean(MF$AUC),2)))
-hist(MF$TjurR2,
-     main=paste0('Thin = ',paste0(thin),' - Mean TjurR2 = ',round(mean(MF$TjurR2),2)))
-hist(MF$RMSE,
-     main=paste0('Thin = ',paste0(thin),' - Mean RMSE = ',round(mean(MF$RMSE),2)))
-}
-saveRDS(MF,file=file.path(input,'model-outputs','model-fit.rds'))
-print('model fit succesfully saved')
 
+# AUC-TJUR ----------------------------------------------------------------
+fit_output <- file.path(input,'model-outputs','model-fit.rds')
+
+### HEAVY 
+if (fit_flag == 1 || !file.exists(fit_output)) {
+preds  <- pcomputePredictedValues(fitSepTF,expected=T)
+MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
+saveRDS(MF,file=fit_output)
+
+print('model fit succesfully saved')
+}else{
+  print('model fit skipped')
+}
 # ### CHUNKY
 # chunk_size <- 10
 # 
@@ -186,8 +194,14 @@ print('model fit succesfully saved')
 
 
 # VP ----------------------------------------------------------------
-postlist <- poolMcmcChains(fitSepTF,thin = 1000)
-VP = computeVariancePartitioning(postlist)
+VP_full_output <- file.path(input,'model-outputs','VP-full.rds')
+VP_split_output <- file.path(input,'model-outputs','VP-split.rds')
+VP_season_output <- file.path(input,'model-outputs','VP-season.rds')
+
+VP_output <- c(VP_full_output, VP_split_output, VP_season_output)
+
+if (fit_flag == 1 || all(!file.exists(VP_output))) {
+VP = computeVariancePartitioning(fitSepTF)
 
 # split by groups 
 #names <- VP$groupnames
@@ -212,24 +226,27 @@ VP_season = computeVariancePartitioning(fitSepTF,
                                                        'landscape',
                                                        'land-use classes'))
 
-saveRDS(VP,file=file.path(input,'model-outputs','VP-full.rds'))
-saveRDS(VP_split,file=file.path(input,'model-outputs','VP-split.rds'))
-saveRDS(VP_season,file=file.path(input,'model-outputs','VP-season.rds'))
+saveRDS(VP,file=VP_full_output)
+saveRDS(VP_split,file=VP_split_output)
+saveRDS(VP_season,file=VP_season_output)
 
 print('variance partitions succesfully saved')
-
+}else{
+  print('variance partitions skipped')
+}
 
 # TEST A PREDICTION -------------------------------------------------------
+if(pred_flag==1){
 covariates <- c('tmean_year','prec_year')
 covariate <- covariates[1]
 #parallel::mclapply(covariates, function(covariate) {
 
   print('starting gradient')
-  Gradient <- constructGradient(m, focalVariable = covariate, ngrid = 30,
-                                non.focalVariables = list(tmean_winter = 0))
+  Gradient <- constructGradient(m, focalVariable = covariate, ngrid = 5)
   print('starting predictions')
 
-  predY <- predict(fitSepTF, Gradient = Gradient, expected = TRUE)
+  predY <- predict(fitSepTF, Gradient = Gradient, expected = TRUE,
+  nParallel = n_cores)
   
   # Save each covariate separately
   saveRDS(list(predY = predY, Gradient = Gradient),
@@ -238,7 +255,9 @@ covariate <- covariates[1]
 #}, mc.cores = 2)
 
 print('predictions succesfully saved')
-
+}else{
+  print('predictions skipped')
+}
 
 
 

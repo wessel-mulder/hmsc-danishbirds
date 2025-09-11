@@ -5,8 +5,8 @@ occs <- data.frame(occs = colSums(m$Y,na.rm=T),
 
 # get species and trait information to identify poorly modelled 
 # species and traits 
-sp <- fitSepTF$spNames
-tr <- fitSepTF$TrData
+sp <- m$spNames
+tr <- m$TrData
 
 sp_fits <- data.frame(
   auc = MF$AUC,

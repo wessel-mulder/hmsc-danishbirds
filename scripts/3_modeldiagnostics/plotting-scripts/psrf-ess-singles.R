@@ -19,9 +19,9 @@ cols <- c('green4','purple4','yellow4','orange4','ivory','ivory','blue4','blue4'
 
 
 # init output documents 
+# objects in the list 
 
-
-for(i in seq_along(params)){
+for(i in seq_along(names)){
   ### PSRFS 
   if(i == 1){
     if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results'))}
@@ -59,5 +59,5 @@ for(i in seq_along(params)){
     lty = c(1, 2, 3)
   )
   
-  if(i == length(params)){dev.off()}
+  if(i == length(names)){dev.off()}
 }

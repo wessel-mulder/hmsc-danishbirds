@@ -7,7 +7,7 @@ nChains <- 4
 verbose <- 100
 
 thin <- c(1000)
-nSamples <- c(250)
+nSamples <- c(25)
 transient <- 50000
 
 

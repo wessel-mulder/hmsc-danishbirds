@@ -11,7 +11,7 @@ for(i in seq_along(VPs)){
   
   par(mar = c(15,5,5,15))
   
-  Tr <- fitSepTF$TrData
+  Tr <- m$TrData
   guilds <- unique(Tr$foraging_guild_consensus)
   
   #guilds <- c('Passerine seedeaters','Diurnal raptors')
@@ -29,7 +29,7 @@ for(i in seq_along(VPs)){
     
     if(i == 1){
     main <- paste0('Variance Partitioning - ',focal_guild)
-    Hmsc::plotVariancePartitioning(fitSepTF,VP_guild,
+    Hmsc::plotVariancePartitioning(m,VP_guild,
                                    cols = c('firebrick3',
                                             'firebrick2',
                                             'firebrick1',
@@ -51,7 +51,7 @@ for(i in seq_along(VPs)){
                                                       inset=c(-0.25,0)))
     }else if(i == 2){
       main <- paste0('Variance Partitioning - ',focal_guild,' - Grouped by category')
-      Hmsc::plotVariancePartitioning(fitSepTF,VP_guild,
+      Hmsc::plotVariancePartitioning(m,VP_guild,
                                      cols = c('firebrick3',
                                               'dodgerblue3',
                                               'goldenrod2',
@@ -70,7 +70,7 @@ for(i in seq_along(VPs)){
 
     }else if(i == 3){
       main <- paste0('Variance Partitioning - ',focal_guild,' - Grouped by season')
-      Hmsc::plotVariancePartitioning(fitSepTF,VP_guild,
+      Hmsc::plotVariancePartitioning(m,VP_guild,
                                      cols = c('coral',
                                               'lightblue',
                                               'lightgreen',

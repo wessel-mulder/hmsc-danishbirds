@@ -5,7 +5,7 @@ pdf(file=file.path(input,'results','VP.pdf'),
 par(mar = c(5,5,5,15))
 # ALL VARS 
 main <- 'Variance Partitioning'
-Hmsc::plotVariancePartitioning(fitSepTF,VP,
+Hmsc::plotVariancePartitioning(m,VP,
                          cols = c('firebrick3',
                                   'firebrick2',
                                   'firebrick1',
@@ -28,7 +28,7 @@ Hmsc::plotVariancePartitioning(fitSepTF,VP,
                                             inset=c(-0.25,0)))
 
 main <- 'Variance Partitioning - Grouped by category'
-Hmsc::plotVariancePartitioning(fitSepTF,VP_split,
+Hmsc::plotVariancePartitioning(m,VP_split,
                          cols = c('firebrick3',
                                   'dodgerblue3',
                                   'goldenrod2',
@@ -45,7 +45,7 @@ Hmsc::plotVariancePartitioning(fitSepTF,VP_split,
                                             inset=c(-0.25,0)))
 
 main <- 'Variance Partitioning - Grouped by season'
-Hmsc::plotVariancePartitioning(fitSepTF,VP_season,
+Hmsc::plotVariancePartitioning(m,VP_season,
                          cols = c('coral',
                                   'lightblue',
                                   'lightgreen',

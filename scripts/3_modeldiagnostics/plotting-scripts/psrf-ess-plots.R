@@ -20,23 +20,19 @@ cols <- c('green4','purple4','yellow4','orange4','ivory','ivory','blue4','blue4'
 all_psrf <- list()
 all_ess  <- list()
 
-for(i in seq_along(params)){
+for(i in seq_along(names)){
   all_psrf[[ full_names[i] ]] <- as.numeric(diags$psrf[[i]])
   all_ess[[ full_names[i] ]]  <- as.numeric(diags$ess[[i]])
 }
 
 
 # init pdf 
-if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results'))}
 pdf(file=file.path(input, "results", "PSRF_ESS_combined.pdf"), width=10, height=6)
 
 par(mfrow=c(1,1))
 
 # PSRF plot
 print('psrf plot full')
-
-# REMOVE INFINITE VALUES but throw a warning
-lapply(all_psrf,function(x))
 
 all_psrf <- lapply(all_psrf, function(x) {
 summary(x)
