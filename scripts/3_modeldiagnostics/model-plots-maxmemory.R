@@ -12,7 +12,7 @@ sp_pred_flag <- args[6]
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   message("Running in RStudio")
-  rstudio = easy_mode
+  #rstudio = easy_mode
   library(Hmsc)
   library(jsonify)
   library(knitr)
@@ -203,5 +203,19 @@ print('yearly succesfull')
 
 
 dev.off()
+
+
+
+
+
+# PARAMETER ESTIMATES -----------------------------------------------------
+postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
+plotBeta(m,post = postBeta, 
+         param = "Sign", supportLevel = 0.95)
+postGamma <- readRDS(file.path(input,'model-outputs','posterior-Gamma.rds'))
+plotGamma(m,post = postGamma, 
+         param = "Sign", supportLevel = 0.95)
+
+getPostEstimate(fitSepTF)
 
 

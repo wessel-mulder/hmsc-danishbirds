@@ -599,11 +599,11 @@ head(VP_1900$vals)
 
 # how much traits explain their niches
 # mostly the different proportional land-use classes 
-VP_1950$R2T$Beta
+VP$R2T$Beta
 
 # how much of the traits propagate into explaining the distributions 
 # 13% of occurrence is explained by the traits 
-VP_1950$R2T$Y
+VP$R2T$Y
 
 # parameter estimates for environments 
 postBeta = getPostEstimate(fitSepTF, parName = "Beta")
@@ -611,15 +611,27 @@ postBeta$mean[,1]
 postBeta$support[,1]
 postBeta$support[,1]
 
-pdf(file=file.path(input, "results", "beta.pdf"), 
-    width=10, height=6)
+postGamma = getPostEstimate(fitSepTF, parName = "Gamma")
+colnames(fitSepTF$Tr)
 
-plotBeta(fitSepTF,post = postBeta, 
-         param = "Sign", supportLevel = 0.9)
+ pdf(file=file.path(input, "results", "beta.pdf"), 
+    width=20, height=20)
+
+plotBeta(m,post = postBeta,plotTree=T,
+         param = "Sign", supportLevel = 0.5)
 dev.off()
 
 postGamma = getPostEstimate(fitSepTF,parName = 'Gamma')
-plotGamma(fitSepTF, post=postGamma, param="Support", supportLevel = 0.95)
+plotGamma(fitSepTF, post=postGamma, param="Mean", supportLevel = 0.95)
+
+test <- lapply(postGamma,function(i){
+  i[1:7,]
+})
+test
+
+postAlpha = getPostEstimate(fitSepTF,parName = 'Alpha')
+
+
 #plotGamma(fitSepTF, post=postGamma, param="Mean", supportLevel = 0.95)
 
 postGamma_select <- lapply(postGamma,function(x) x[2:8,])
@@ -803,8 +815,13 @@ plotPostEstimate <- function(m,
     }
     
   } else if (parName == "Omega") {
+    if(length(spVector)){
+      rowNames <- spVector   # Species (rows and columns)
+      colNames <- spVector
+    }else{
     rowNames <- m$spNames   # Species (rows and columns)
     colNames <- m$spNames
+    }
     rowLabel <- "Species (Rows)"
     colLabel <- "Species (Columns)"
     
@@ -913,7 +930,7 @@ for(focal_guild in unique(tr$foraging_guild_consensus)){
 )
 }
 
-plotPostEstimate(fitSepTF, parName = "Omega", plotType = "Sign")
+plotPostEstimate(m, parName = "Omega", plotType = "Sign")
 
 plotBeta(fitSepTF,postBeta,
          param='Sign',supportLevel=0.95)
@@ -921,18 +938,104 @@ plotBeta(fitSepTF,postBeta,
 plotGamma(fitSepTF,postGamma,
          param='Sign',supportLevel=0.95)
 
-tr <- fitSepTF$TrData
+tr <- m$TrData
 
 ### MIGRATION SPECIFIC 
-focal_migrate <- 'sedentary'
-focal_species <- rownames(tr)[tr$Migration_AVONET==focal_migrate]
-plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign",
-                 spVector = focal_species)
+for(strat in unique(tr$Migration_a3_DOF)){
+focal_migrate <- 'gulls'
+focal_species <- rownames(tr)[tr$Migration_a3_DOF==focal_migrate]
+p<- plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Mean",
+                     supportLevel = 0.95,spVector = focal_species,main=focal_migrate)
+print(p)
+}
+plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign")
+
 plotPostEstimate(fitSepTF, parName = "Gamma", plotType = "Sign",
                  supportLevel = 0.95)
+
+# look at guilds+ associations
+focal_guilds <- 'Diurnal raptors'
+focal_species <- rownames(tr)[tr$foraging_guild_consensus==focal_guilds]
+plotPostEstimate(fitSepTF, parName = "Beta", plotType = "Sign",
+                 supportLevel = 0.95,spVector = focal_species)
 
 tree <- fitSepTF$phyloTree
 plot(tree,
      cex = 1)
 
+VP
 
+corrplot(OmegaCor[[1]]$mean)
+
+postEta <- getPostEstimate(fitSepTF,parName='Eta')
+i <- 1
+for(i in 1:ncol(postEta$mean)){
+  eta <- postEta$mean[,i]
+  eta2 <- cbind(eta,xy)
+  p<-ggplot(eta2,aes(x=lon,y=lat,col=eta))+
+    geom_point(cex=3)+
+    labs(title=i)+
+    scale_colour_gradient2(
+      low = "blue",      # color for negative values
+      mid = "ivory",     # color for zero
+      high = "red",      # color for positive values
+      midpoint = 0
+    )
+  print(p)
+}
+
+xy <- fitSepTF$rL[[1]]$s
+
+summary(mpost$Alpha[[1]])[2]
+
+
+
+eta2_df <- cbind(eta2,xy)
+ggplot(eta2_df,aes(x=lon,y=lat,col=eta2))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+eta3_df <- cbind(eta3,xy)
+ggplot(eta3_df,aes(x=lon,y=lat,col=eta3))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+eta4_df <- cbind(eta4,xy)
+ggplot(eta4_df,aes(x=lon,y=lat,col=eta4))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+eta5_df <- cbind(eta5,xy)
+ggplot(eta5_df,aes(x=lon,y=lat,col=eta5))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+eta6_df <- cbind(eta6,xy)
+ggplot(eta6_df,aes(x=lon,y=lat,col=eta6))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
