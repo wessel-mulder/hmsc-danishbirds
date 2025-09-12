@@ -9,6 +9,7 @@ fit_flag <- args[4]
 VP_flag <- args[5]
 pred_flag <- args[6]
 sp_pred_flag <- args[7]
+post_estimates_flag <- args[8]
 
 
 # GETTING STARTED ---------------------------------------------------------
@@ -43,6 +44,9 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   source_path <- file.path('~/home/projects/hmsc-danishbirds/scripts/3_modeldiagnostics/plotting-scripts')
   
 }
+# make dir for outputs 
+if(!dir.exists(file.path(input,'model-outputs'))) {dir.create(file.path(input,'model-outputs'))}
+
 
 # LOADING DATA --------------------------------------------------------
 # load unfitted object
@@ -75,7 +79,9 @@ print('model succesfully loaded')
 # Convert model output to coda format for MCMC diagnostics
 # make smaller for ease in R
 psrf_ess_output<-file.path(input,'model-outputs','psrf-ess.rds')
-if (psrfess_flag == 1 || !file.exists(psrf_ess_output)) {
+if (psrfess_flag == 0 || file.exists(psrf_ess_output)){
+  print('psrf and ess skipped')
+}else{
 mpost <- convertToCodaObject(fitSepTF)
 
 # objects in the list 
@@ -103,7 +109,7 @@ for(j in seq_along(params)){
     # parallelize
     results <- parallel::mclapply(idx_chunks, function(cols) {
       list(
-        psrf = gelman.diag(mat[,cols], multivariate=FALSE)$psrf[,1],
+        psrf = gelman.diag(mat[,cols], multivariate=FALSE,autoburnin=F)$psrf[,1],
         ess  = effectiveSize(mat[,cols])
       )
     }, mc.cores = n_cores)  # adjust cores to liking
@@ -118,7 +124,7 @@ for(j in seq_along(params)){
     print('not in the loop')
     print(mat)
     summary(mat)
-    #diags$psrf[[j]] <- gelman.diag(mat, multivariate=FALSE)$psrf[,1]
+    diags$psrf[[j]] <- gelman.diag(mat, multivariate=FALSE,autoburnin=F)$psrf[,1]
     print('trying ess')
     diags$ess[[j]] <- effectiveSize(mat)
   }
@@ -126,11 +132,8 @@ for(j in seq_along(params)){
 }
 
 # init pdf 
-if(!dir.exists(file.path(input,'model-outputs'))) {dir.create(file.path(input,'model-outputs'))}
 saveRDS(diags,file=psrf_ess_output)
 print('psrf and ess succesfully saved')
-}else{
-  print('psrf and ess skipped')
 }
 
 # AUC-TJUR ----------------------------------------------------------------
@@ -259,5 +262,12 @@ print('predictions succesfully saved')
   print('predictions skipped')
 }
 
-
+# GET POSTERIOR ESTIMATES 
+print('starting posteriors')
+if(post_estimates_flag==1){
+  for(parameter in c('Beta','Gamma','Omega','OmegaCor')){
+  posterior = getPostEstimate(fitSepTF, parName = parameter)
+  saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
+  }
+}
 
