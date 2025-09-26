@@ -2,13 +2,15 @@ rm(list = ls())
 
 # Define MCMC settings
 subset_env_vars <- 0 # flip to 0 to reverse subset
-knotDistance = 0.1 # knotdistances 
+knotDistance = 0.2 # knotdistances 
 nChains <- 4
 verbose <- 100
 
-thin <- c(1000)
-nSamples <- c(25)
+thin <- c(10)
+nSamples <- c(250)
 transient <- 50000
+nfmin<-1
+nfmax<- c(1,3,10)
 
 
 
@@ -97,31 +99,6 @@ Design$year[Design$atlas == '1'] <- 1971
 Design$year[Design$atlas == '2'] <- 1992
 Design$year[Design$atlas == '3'] <- 2014
 
-# get xycoords
-xycoords <- Design[,colnames(Design) %in% c('lat','lon','site')]
-xycoords <- distinct(xycoords)
-rownames(xycoords) <- xycoords$site
-xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
-
-# get blocks and midpoints 
-Design$block <- substr(Design$site, 1, 2)
-Design$block <- as.factor(Design$block)
-
-midpoints <- lapply(levels(Design$block), function(block) {
-  x <- Design$lon[Design$block == block]
-  y <- Design$lat[Design$block == block]
-  
-  xmid <- (max(x) + min(x)) / 2
-  ymid <- (max(y) + min(y)) / 2
-  
-  data.frame(block = block, lon = xmid, lat = ymid)
-})
-
-midpoints <- do.call(rbind, midpoints)
-rownames(midpoints) <- midpoints$block
-midpoints <- midpoints[,colnames(midpoints) %in% c('lat','lon')]
-
-
 
 # phylogeny
 phy <- read.tree(file.path(input,'data/1_preprocessing/Taxonomy/tree_fromPD.tre'))
@@ -132,69 +109,6 @@ pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
 # check if species-lists are identical
 setdiff(rownames(pd_matrix),names(Y))
 # stunning 
-
-
-
-
-# SANITY CHECKS -----------------------------------------------------------
-### XY COORDS OF BIRDS 
-# check with atlas3 to make sure everything is correct
-branta <- data.frame(pa=Y[,'Branta_leucopsis',drop=F])
-# keep only rows where rownames end in "_3"
-branta_a3 <- branta[grepl("_3$", rownames(branta)), , drop = FALSE]
-# strip the "_3" from the rownames
-rownames(branta_a3) <- sub("_3$", "", rownames(branta_a3))
-#mergs
-pa_branta <- merge(xycoords,branta_a3,by='row.names')
-# plot 
-ggplot(pa_branta,
-       aes(x=lon,y=lat,color=Branta_leucopsis))+
-  geom_point()
-
-### CLIMATE DATA 
-for(i in c(1:3)){
-print(i)
-# check spatial distribution
-tmean <- data.frame(temp=X[,'tmean_winter',drop=F])
-# keep only rows where rownames end in "_3"
-tmean_a3 <- tmean[grepl(paste0("_",i,"$"), rownames(tmean)), , drop = FALSE]
-# strip the "_3" from the rownames
-rownames(tmean_a3) <- sub(paste0("_",i,"$"), "", rownames(tmean_a3))
-#mergs
-tmean_space <- merge(xycoords,tmean_a3,by='row.names')
-# plot 
-p<-ggplot(tmean_space,
-       aes(x=lon,y=lat,color=tmean_winter))+
-  geom_point()+
-  scale_color_gradientn(limits=c(-1.5,4),colors=c('blue','red'))+
-  labs(title=i)
-print(p)
-}
-
-### LANDUSE DATA
-for(j in c(0,11,22,33,44,55,66,77)){
-for(i in c(1:3)){
-  print(i)
-  name <- paste0('LULC_',j)
-  # check spatial distribution
-  tmean <- data.frame(temp=X[,name,drop=F])
-  colnames(tmean) <- 'landuse'
-  # keep only rows where rownames end in "_3"
-  tmean_a3 <- tmean[grepl(paste0("_",i,"$"), rownames(tmean)), , drop = FALSE]
-  # strip the "_3" from the rownames
-  rownames(tmean_a3) <- sub(paste0("_",i,"$"), "", rownames(tmean_a3))
-  #mergs
-  tmean_space <- merge(xycoords,tmean_a3,by='row.names')
-  # plot 
-  p<-ggplot(tmean_space,
-            aes(x=lon,y=lat,color=landuse))+
-    geom_point()+
-    scale_color_gradientn(limits=c(0,1),colors=c('white','darkgreen'))+
-    labs(title=paste0(name,' - ',i))
-  print(p)
-}
-}
-### SITES WITH NA 
 
 
 # number of occurrences, make sure there are no below 5 
@@ -208,7 +122,8 @@ all(rownames(Tr) == colnames(Y))
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-
+for(n in nfmax){
+print(n)
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 for(i in thin){
@@ -223,68 +138,38 @@ for(i in thin){
     nSamples = j,
     transient = transient,
     verbose = verbose,
-    knotDist = knotDistance
+    knotDist = knotDistance,
+    maxlatents = n
     )
 
 
-  ### SAME ACROSS ALL MODELS
-  # Define model formulas for environmental and trait data
-  if(subset_env_vars == 1){
-    X <- X %>% 
-      select(tmean_winter,tmean_breeding,
-             prec_winter,prec_breeding,
-             hh,unique)
-  }
+
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
   TrFormula <- as.formula(paste("~", paste(colnames(Tr), collapse = "+"), sep = " "))
   
-  # get year sorted 
   Design$year <- as.numeric(as.character(Design$year))
   time <- data.frame(year = sort(unique(Design$year)))
   rownames(time) <- sort(unique(Design$year))
   struc_time <- HmscRandomLevel(sData = time)
   Design$year <- as.factor(Design$year)
   
-  # construct knots 
   xycoords <- as.matrix(xycoords)
   xyKnots = constructKnots(xycoords,knotDist = knotDistance, minKnotDist = knotDistance)
   nKnots <- nrow(xyKnots)
   plot(xycoords[,2],xycoords[,1],pch=18, asp=1)
   points(xyKnots[,2],xyKnots[,1],col='red',pch=18)
-  
-  # smallest level 
   struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "GPP",
                                  sKnot = xyKnots)
-  struc_block <- HmscRandomLevel(sData = midpoints, sMethod = "GPP",
-                                 sKnot = xyKnots)
-  struc_space$alphapw
-  # standard frequencies 
-  freq <- c(0.5,rep(0.005,100))
-  #under 1 degree
-  samples <- c(0,seq(from = 0.05, to = 0.5, length.out = 100))
-  small <- cbind(samples,freq)
   
-  #under 1-3 degree
-  samples <- c(0,seq(from = 0.5, to = 1, length.out = 100))
-  medium <- cbind(samples,freq)
-  
-  # 3 - max degree
-  samples <- c(0,seq(from = 1, to = 7.7, length.out = 100))
-  large <- cbind(samples,freq)
-  
-  struc_space_small <- setPriors(struc_space,alphapw=small,nfMax=5)
-  struc_space_medium <- setPriors(struc_block,alphapw=medium,nfMax=5)
-  struc_space_large <- setPriors(struc_block,alphapw=large,nfMax=5)
-  
-  Design$blockregion <- Design$block
-  
+  # define priors, keep minimum 1 
+  struc_time= setPriors(struc_time,nfMin=1,nfMax=n)
+  struc_space= setPriors(struc_space,nfMin=1,nfMax=n)
 
   # define m 
   m <-Hmsc(Y = Y, XData = X, XFormula = XFormula, TrData = Tr,
            TrFormula = TrFormula, phyloTree = phy,
-           studyDesign = Design[,c('year','site','block','blockregion')], 
-           ranLevels = list('site'=struc_space_small,'block'=struc_space_medium,'blockregion'=struc_space_large,
-                            'year'=struc_time),
+           studyDesign = Design[,c(1,5)], 
+           ranLevels = list('site'=struc_space,'year'=struc_time),
            distr='probit')
   
   rownames(phy)
@@ -301,7 +186,7 @@ for(i in thin){
                          verbose = verbose,
                          engine="HPC")
   
-  dir_name <- paste0(date,'_samples_',j,'_thin_',i)
+  dir_name <- paste0(date,'_maxlatents_',n)
   print(dir_name)
   dir.create(file.path(input,'tmp_rds',dir_name))
 
@@ -333,4 +218,5 @@ for(i in thin){
   print('Init files created')
   }
   }
+}
 }
