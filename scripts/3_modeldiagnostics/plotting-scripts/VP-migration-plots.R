@@ -12,11 +12,11 @@ for(i in seq_along(VPs)){
   par(mar = c(15,5,5,15))
   
   Tr <- m$TrData
-  guilds <- unique(Tr$Migration_AVONET)
+  guilds <- unique(Tr$Migration_a3_DOF)
   
   for(g in guilds){
     focal_guild <- g
-    focal_species <- rownames(Tr[Tr$Migration_AVONET%in%g,])
+    focal_species <- rownames(Tr[Tr$Migration_a3_DOF%in%g,])
     n_species <- length(focal_species)
     indices <-  which(colnames(VP_cur$vals)%in%focal_species)
     

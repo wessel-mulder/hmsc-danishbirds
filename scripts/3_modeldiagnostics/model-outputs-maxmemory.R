@@ -23,9 +23,17 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(vioplot)
   library(dplyr)
   library(abind)
-  mod <- '2025-09-08_17-32-13_samples_1000_thin_100'
-  input <- file.path('./tmp_rds/mods-single',mod)
+  mod <- '2025-09-15_14-10-17_spaceonly'
+  input <- file.path('./tmp_rds/mods-space-nonspace',mod)
   source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
+  # other flags
+  psrfess_flag <- 1
+  fit_flag <- 1
+  VP_flag <- 1
+  pred_flag <- 1
+  sp_pred_flag <- 1
+  post_estimates_flag <- 1
+  n_cores <-4
   
 } else {
   message("Running from terminal or non-interactive environment")
@@ -46,6 +54,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
 }
 # make dir for outputs 
 if(!dir.exists(file.path(input,'model-outputs'))) {dir.create(file.path(input,'model-outputs'))}
+if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results'))}
 
 
 # LOADING DATA --------------------------------------------------------
@@ -73,21 +82,28 @@ for(cInd in 1:nChains){
 filteredList <- chainList
 
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
+mpost <- convertToCodaObject(fitSepTF)
+
 
 print('model succesfully loaded')
 # PSRF / ESS  ----------------------------------------------------
 # Convert model output to coda format for MCMC diagnostics
 # make smaller for ease in R
 psrf_ess_output<-file.path(input,'model-outputs','psrf-ess.rds')
-if (psrfess_flag == 0 || file.exists(psrf_ess_output)){
+if (psrfess_flag == 0 ){
   print('psrf and ess skipped')
 }else{
 mpost <- convertToCodaObject(fitSepTF)
+summary(mpost)
 
 # objects in the list 
-params <- list(mpost$Beta,mpost$Gamma,mpost$Rho,mpost$V,
+params <- list(mpost$Beta,mpost$Gamma,mpost$Rho,mpost$V,mpost$Sigma,
+               mpost$Eta[[1]],mpost$Eta[[2]],
                mpost$Alpha[[1]],mpost$Alpha[[2]],
-               mpost$Omega[[1]],mpost$Omega[[2]])
+               mpost$Omega[[1]],mpost$Omega[[2]],
+               mpost$Lambda[[1]],mpost$Lambda[[2]],
+               mpost$Psi[[1]],mpost$Psi[[2]],
+               mpost$Delta[[1]],mpost$Delta[[2]])
 
 diags <- list(psrf = list(), ess = list())
 chunk_size <- 10
@@ -100,7 +116,6 @@ for(j in seq_along(params)){
 
   # process in chunks if ncols > 1
   if(length(ncols)){
-    print('entering the loop')
     idx_chunks <- split(1:ncols, ceiling(seq_along(1:ncols)/chunk_size))
     
     psrf_list <- list()
@@ -121,11 +136,7 @@ for(j in seq_along(params)){
     diags$psrf[[j]] <- unlist(psrf_list)
     diags$ess[[j]]  <- unlist(ess_list)
   }else{
-    print('not in the loop')
-    print(mat)
-    summary(mat)
     diags$psrf[[j]] <- gelman.diag(mat, multivariate=FALSE,autoburnin=F)$psrf[,1]
-    print('trying ess')
     diags$ess[[j]] <- effectiveSize(mat)
   }
   
@@ -135,6 +146,9 @@ for(j in seq_along(params)){
 saveRDS(diags,file=psrf_ess_output)
 print('psrf and ess succesfully saved')
 }
+
+source(file.path(source_path,'psrf-ess-plots.R'))
+source(file.path(source_path,'psrf-ess-singles.R'))
 
 # AUC-TJUR ----------------------------------------------------------------
 fit_output <- file.path(input,'model-outputs','model-fit.rds')
@@ -270,4 +284,6 @@ if(post_estimates_flag==1){
   saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
   }
 }
+
+
 

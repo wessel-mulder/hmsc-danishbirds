@@ -20,7 +20,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(colorspace)
   library(vioplot)
   library(dplyr)
-  #mod <- '2025-09-08_17-32-13_samples_1000_thin_100'
+  mod <- '2025-09-10_11-14-06_samples_250_thin_1000'
   input <- file.path('./tmp_rds/mods-single',mod)
   source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
   
@@ -45,10 +45,39 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
 m <- readRDS(file.path(input,'m_object.rds'))
 if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results'))}
 
+# LOADING MODEL  ----------------------------------------------------------
+# load unfitted object
+m <- readRDS(file.path(input,'m_object.rds'))
+summary(m)
+# load params 
+params <- readRDS(file.path(input,'params.rds'))
+nChains <- params$nChains
+nSamples <- params$nSamples
+thin <- params$thin
+transient <- params$transient
+
+
+
+chainList = vector("list", nChains)
+for(cInd in 1:nChains){
+  chain_file_path = file.path(input, sprintf("post_chain%.2d_file.rds", cInd-1))
+  print(chain_file_path)
+  if(file.exists(chain_file_path)) {
+    chainList[[cInd]] = from_json(readRDS(file = chain_file_path)[[1]])[[1]]
+  }
+}
+
+filteredList <- chainList
+
+fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
+
+print('model succesfully loaded')
+
 # LOADING DATA --------------------------------------------------------
 print('starting psrf-ess plots')
 
 diags <- readRDS(file.path(input,'model-outputs','psrf-ess.rds'))
+
 source(file.path(source_path,'psrf-ess-plots.R'))
 source(file.path(source_path,'psrf-ess-singles.R'))
 
@@ -205,17 +234,128 @@ print('yearly succesfull')
 dev.off()
 
 
-
+dev.new()
 
 
 # PARAMETER ESTIMATES -----------------------------------------------------
+plot.new()
 postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
 plotBeta(m,post = postBeta, 
          param = "Sign", supportLevel = 0.95)
 postGamma <- readRDS(file.path(input,'model-outputs','posterior-Gamma.rds'))
 plotGamma(m,post = postGamma, 
-         param = "Sign", supportLevel = 0.95)
+         param = "Mean", supportLevel = 0.95)
 
 getPostEstimate(fitSepTF)
+
+postAlpha <- getPostEstimate(fitSepTF,parName='Alpha',r=2)
+mpost<-convertToCodaObject(fitSepTF)
+
+# spatial structure
+summary(mpost$Alpha[[1]])[2]$quantiles[1,]
+# temporal structure
+summary(mpost$Alpha[[2]])[2]$quantiles[1,]
+
+summary(mpost$Alpha[[2]])
+
+fitSepTF
+
+postEta <- getPostEstimate(fitSepTF,parName='Eta')
+summary(postEta$support)
+
+
+i <- 1
+for(i in 1:ncol(postEta$mean)){
+  eta <- postEta$mean[,i]
+  eta2 <- cbind(eta,xy)
+  p<-ggplot(eta2,aes(x=lon,y=lat,col=eta))+
+    geom_point(cex=3)+
+    labs(title=i)+
+    scale_colour_gradient2(
+      low = "blue",      # color for negative values
+      mid = "ivory",     # color for zero
+      high = "red",      # color for positive values
+      midpoint = 0
+    )
+  print(p)
+}
+
+xy <- fitSepTF$rL[[1]]$s
+
+summary(mpost$Alpha[[1]])[2]
+
+
+
+eta2_df <- cbind(eta2,xy)
+ggplot(eta2_df,aes(x=lon,y=lat,col=eta2))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+eta3_df <- cbind(eta3,xy)
+ggplot(eta3_df,aes(x=lon,y=lat,col=eta3))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+eta4_df <- cbind(eta4,xy)
+ggplot(eta4_df,aes(x=lon,y=lat,col=eta4))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+eta5_df <- cbind(eta5,xy)
+ggplot(eta5_df,aes(x=lon,y=lat,col=eta5))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+eta6_df <- cbind(eta6,xy)
+ggplot(eta6_df,aes(x=lon,y=lat,col=eta6))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+
+# TRACE PLOTS -------------------------------------------------------------
+par(mfrow=c(1,1))
+library(rethinking)
+
+mpost$Alpha[[1]]
+
+mpost<-convertToCodaObject(fitSepTF)
+summary(mpost)
+
+
+plot(mpost$Alpha[[1]])
+plot(mpost$Alpha[[2]])
+
+plot(mpost$Alpha[[1]],auto.layout=F)
+
+plot(mpost$Alpha[[1]][,1:4])
+
+traceplot(mpost$Alpha[[1]])
+plot(mpost$Beta[,1:10],auto.layout=F)
+dev.new()
 
 

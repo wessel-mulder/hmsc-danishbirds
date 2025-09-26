@@ -1,4 +1,3 @@
-input <- 'tmp_rds/mods-single/2025-08-29_15-52-09_samples_1000_thin_100/'
 subset_sppairs <- T
 reset <- 1
 if(reset){
@@ -22,6 +21,8 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(colorspace)
   library(vioplot)
   library(dplyr)
+  mod <- '2025-09-10_11-14-06_samples_250_thin_1000'
+  input <- file.path('./tmp_rds/mods-single',mod)
   
 } else {
   message("Running from terminal or non-interactive environment")
@@ -967,8 +968,25 @@ VP
 
 corrplot(OmegaCor[[1]]$mean)
 
+# LOOKING AT ETA ----------------------------------------------------------
+postAlphaspace <- getPostEstimate(fitSepTF,parName='Alpha',r=1)
+postAlphatime <- getPostEstimate(fitSepTF,parName='Alpha',r=2)
+
+mpost<-convertToCodaObject(fitSepTF)
+
+# spatial structure
+summary(mpost$Alpha[[1]])[2]$quantiles[1,]
+# temporal structure
+summary(mpost$Alpha[[2]])[2]$quantiles[1,]
+
+summary(mpost$Alpha[[2]])
+
+fitSepTF
+
 postEta <- getPostEstimate(fitSepTF,parName='Eta')
-i <- 1
+xy <- fitSepTF$rL[[1]]$s
+library(ggplot2)
+i <- 2
 for(i in 1:ncol(postEta$mean)){
   eta <- postEta$mean[,i]
   eta2 <- cbind(eta,xy)
@@ -1039,3 +1057,68 @@ ggplot(eta6_df,aes(x=lon,y=lat,col=eta6))+
     high = "red",      # color for positive values
     midpoint = 0
   )
+
+
+### CLIMATE DATA 
+landuse <- 'LULC_0'
+# check spatial distribution
+tmean <- data.frame(temp=fitSepTF$X[,landuse,drop=F])
+colnames(tmean) <- 'env'
+# keep only rows where rownames end in "_3"
+tmean_a3 <- tmean[grepl(paste0("_",j,"$"), rownames(tmean)), , drop = FALSE]
+# strip the "_3" from the rownames
+rownames(tmean_a3) <- sub(paste0("_",j,"$"), "", rownames(tmean_a3))
+#mergs
+tmean_space <- merge(xy,tmean_a3,by='row.names')
+# plot 
+p<-ggplot(tmean_space,
+          aes(x=lon,y=lat,color=env))+
+  geom_point(cex=3)+
+  scale_color_gradientn(colors=c('moccasin','darkblue'))+
+  labs(title=j)
+p
+
+par(mfrow=c(1,2))
+for(i in 1:ncol(postEta$mean)){
+  eta <- postEta$mean[,i]
+  eta2 <- cbind(eta,xy)
+  q<-ggplot(eta2,aes(x=lon,y=lat,col=eta))+
+    geom_point(cex=3)+
+    labs(title=i)+
+    scale_colour_gradient2(
+      low = "moccasin",      # color for negative values
+      #mid = "ivory",     # color for zero
+      high = "darkblue",      # color for positive values
+      #midpoint = 0
+    )
+  grid.arrange(p,q,ncol=2)
+}
+
+
+library(gridExtra)
+
+
+
+### LANDUSE DATA
+for(j in c(0,11,22,33,44,55,66,77)){
+  for(i in c(1:3)){
+    print(i)
+    name <- paste0('LULC_',j)
+    # check spatial distribution
+    tmean <- data.frame(temp=X[,name,drop=F])
+    colnames(tmean) <- 'landuse'
+    # keep only rows where rownames end in "_3"
+    tmean_a3 <- tmean[grepl(paste0("_",i,"$"), rownames(tmean)), , drop = FALSE]
+    # strip the "_3" from the rownames
+    rownames(tmean_a3) <- sub(paste0("_",i,"$"), "", rownames(tmean_a3))
+    #mergs
+    tmean_space <- merge(xycoords,tmean_a3,by='row.names')
+    # plot 
+    p<-ggplot(tmean_space,
+              aes(x=lon,y=lat,color=landuse))+
+      geom_point()+
+      scale_color_gradientn(limits=c(0,1),colors=c('white','darkgreen'))+
+      labs(title=paste0(name,' - ',i))
+    print(p)
+  }
+}
