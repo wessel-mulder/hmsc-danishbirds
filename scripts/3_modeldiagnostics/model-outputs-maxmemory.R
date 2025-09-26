@@ -85,9 +85,13 @@ if (psrfess_flag == 0 || file.exists(psrf_ess_output)){
 mpost <- convertToCodaObject(fitSepTF)
 
 # objects in the list 
-params <- list(mpost$Beta,mpost$Gamma,mpost$Rho,mpost$V,
-               mpost$Alpha[[1]],mpost$Alpha[[2]],
-               mpost$Omega[[1]],mpost$Omega[[2]])
+  params <- list(mpost$Beta,mpost$Gamma,mpost$Rho,mpost$V,mpost$Sigma,
+                 mpost$Eta[[1]],mpost$Eta[[2]],
+                 mpost$Alpha[[1]],mpost$Alpha[[2]],
+                 mpost$Omega[[1]],mpost$Omega[[2]],
+                 mpost$Lambda[[1]],mpost$Lambda[[2]],
+                 mpost$Psi[[1]],mpost$Psi[[2]],
+                 mpost$Delta[[1]],mpost$Delta[[2]])
 
 diags <- list(psrf = list(), ess = list())
 chunk_size <- 10
@@ -96,11 +100,9 @@ for(j in seq_along(params)){
   print(j)
   mat <- params[[j]]
   ncols <- ncol(mat[[1]]) # get ncol 
-  print(ncols)
 
   # process in chunks if ncols > 1
   if(length(ncols)){
-    print('entering the loop')
     idx_chunks <- split(1:ncols, ceiling(seq_along(1:ncols)/chunk_size))
     
     psrf_list <- list()
@@ -121,11 +123,7 @@ for(j in seq_along(params)){
     diags$psrf[[j]] <- unlist(psrf_list)
     diags$ess[[j]]  <- unlist(ess_list)
   }else{
-    print('not in the loop')
-    print(mat)
-    summary(mat)
     diags$psrf[[j]] <- gelman.diag(mat, multivariate=FALSE,autoburnin=F)$psrf[,1]
-    print('trying ess')
     diags$ess[[j]] <- effectiveSize(mat)
   }
   
@@ -265,7 +263,8 @@ print('predictions succesfully saved')
 # GET POSTERIOR ESTIMATES 
 print('starting posteriors')
 if(post_estimates_flag==1){
-  for(parameter in c('Beta','Gamma','Omega','OmegaCor')){
+  for(parameter in c('Beta','Gamma','Omega','OmegaCor'))
+  {
   posterior = getPostEstimate(fitSepTF, parName = parameter)
   saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
   }

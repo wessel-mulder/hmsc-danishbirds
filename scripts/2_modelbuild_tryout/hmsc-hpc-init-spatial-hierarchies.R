@@ -6,12 +6,9 @@ knotDistance = 0.1 # knotdistances
 nChains <- 4
 verbose <- 100
 
-thin <- c(1000)
+thin <- c(10)
 nSamples <- c(250)
-transient <- 125000
-
-
-
+transient <- 5000
 
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
@@ -109,12 +106,6 @@ pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
 setdiff(rownames(pd_matrix),names(Y))
 # stunning 
 
-# get xycoords
-xycoords <- Design[,colnames(Design) %in% c('lat','lon','site')]
-xycoords <- distinct(xycoords)
-rownames(xycoords) <- xycoords$site
-xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
-
 # number of occurrences, make sure there are no below 5 
 info <- apply(Y,2,sum)
 table(info)
@@ -126,7 +117,6 @@ all(rownames(Tr) == colnames(Y))
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 for(i in thin){
@@ -145,39 +135,88 @@ for(i in thin){
     )
 
 
-  ### SAME ACROSS ALL MODELS
-  # Define model formulas for environmental and trait data
-  if(subset_env_vars == 1){
-    X <- X %>% 
-      select(tmean_winter,tmean_breeding,
-             prec_winter,prec_breeding,
-             hh,unique)
-  }
+
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
   TrFormula <- as.formula(paste("~", paste(colnames(Tr), collapse = "+"), sep = " "))
   
+  # get year sorted 
   Design$year <- as.numeric(as.character(Design$year))
   time <- data.frame(year = sort(unique(Design$year)))
   rownames(time) <- sort(unique(Design$year))
   struc_time <- HmscRandomLevel(sData = time)
   Design$year <- as.factor(Design$year)
   
+  # get space
+  xycoords <- Design[,colnames(Design) %in% c('lat','lon','site')]
+  xycoords <- distinct(xycoords)
+  rownames(xycoords) <- xycoords$site
+  xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
+
+  # get blocks and midpoints 
+Design$block <- substr(Design$site, 1, 2)
+Design$block <- as.factor(Design$block)
+
+midpoints <- lapply(levels(Design$block), function(block) {
+  x <- Design$lon[Design$block == block]
+  y <- Design$lat[Design$block == block]
+  
+  xmid <- (max(x) + min(x)) / 2
+  ymid <- (max(y) + min(y)) / 2
+  
+  data.frame(block = block, lon = xmid, lat = ymid)
+})
+
+midpoints <- do.call(rbind, midpoints)
+rownames(midpoints) <- midpoints$block
+midpoints <- midpoints[,colnames(midpoints) %in% c('lat','lon')]
+  
+  # construct nots 
   xycoords <- as.matrix(xycoords)
   xyKnots = constructKnots(xycoords,knotDist = knotDistance, minKnotDist = knotDistance)
   nKnots <- nrow(xyKnots)
   plot(xycoords[,2],xycoords[,1],pch=18, asp=1)
   points(xyKnots[,2],xyKnots[,1],col='red',pch=18)
+  
+  # smallest level 
   struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "GPP",
                                  sKnot = xyKnots)
+  struc_block <- HmscRandomLevel(sData = midpoints, sMethod = "GPP",
+                                 sKnot = xyKnots)
+  struc_space$alphapw
+  # standard frequencies 
+  freq <- c(0.5,rep(0.005,100))
+  #under 1 degree
+  samples <- c(0,seq(from = 0.05, to = 0.1, length.out = 100))
+  smallest <- cbind(samples,freq)
 
+  samples <- c(0,seq(from = 0.1, to = 0.5, length.out = 100))
+  small <- cbind(samples,freq)
+  
+  #under 1-3 degree
+  samples <- c(0,seq(from = 0.5, to = 1, length.out = 100))
+  medium <- cbind(samples,freq)
+  
+  # 3 - max degree
+  samples <- c(0,seq(from = 1, to = 7.7, length.out = 100))
+  large <- cbind(samples,freq)
+  
+  struc_space_smallest <- setPriors(struc_space,alphapw=smallest,nfMax=5)
+  struc_space_small <- setPriors(struc_space,alphapw=small,nfMax=5)
 
-  print('making object')
+  struc_space_medium <- setPriors(struc_block,alphapw=medium,nfMax=5)
+  struc_space_large <- setPriors(struc_block,alphapw=large,nfMax=5)
+  
+  Design$blockregion <- Design$block
+  Design$siteregion <- Design$site
+
   # define m 
   m <-Hmsc(Y = Y, XData = X, XFormula = XFormula, TrData = Tr,
            TrFormula = TrFormula, phyloTree = phy,
-           studyDesign = Design[,c(1,5)], 
-           ranLevels = list('site'=struc_space,'year'=struc_time),
+           studyDesign = Design[,c('year','site','siteregion','block','blockregion')], 
+           ranLevels = list('site'=struc_space_smallest,'siteregion'=struc_space_small,'block'=struc_space_medium,'blockregion'=struc_space_large,
+                            'year'=struc_time),
            distr='probit')
+  
   
   rownames(phy)
   
@@ -193,8 +232,7 @@ for(i in thin){
                          verbose = verbose,
                          engine="HPC")
   
-  # EDIT NAME OF MODEL 
-  dir_name <- paste0(date,'_samples_',j,'_gpp')
+  dir_name <- paste0(date,'_spatialhierarchies')
   print(dir_name)
   dir.create(file.path(input,'tmp_rds',dir_name))
 
@@ -227,3 +265,4 @@ for(i in thin){
   }
   }
 }
+

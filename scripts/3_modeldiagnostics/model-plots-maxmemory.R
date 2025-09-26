@@ -47,22 +47,23 @@ if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results
 
 # LOADING DATA --------------------------------------------------------
 print('starting psrf-ess plots')
-
+if(psrfess_flag == 1){
 diags <- readRDS(file.path(input,'model-outputs','psrf-ess.rds'))
 source(file.path(source_path,'psrf-ess-plots.R'))
 source(file.path(source_path,'psrf-ess-singles.R'))
-
+}
 # AUC / TJUR --------------------------------------------------------------
 # get preds 
 print('starting fit-tjur plots')
+if(fit_flag == 1){
 
 MF <- readRDS(file.path(input,'model-outputs','model-fit.rds'))
 source(file.path(source_path,'auc-tjur-plots.R'))
-
+}
 
 # VP ----------------------------------------------------------------------
 print('starting VP plots')
-
+if(VP_flag==1){
 VP <- readRDS(file.path(input,'model-outputs','VP-full.rds'))
 VP_split <- readRDS(file.path(input,'model-outputs','VP-split.rds'))
 VP_season <- readRDS(file.path(input,'model-outputs','VP-season.rds'))
@@ -205,10 +206,11 @@ print('yearly succesfull')
 dev.off()
 
 
-
+}
 
 
 # PARAMETER ESTIMATES -----------------------------------------------------
+if(pred_flag==1){
 postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
 plotBeta(m,post = postBeta, 
          param = "Sign", supportLevel = 0.95)
@@ -217,5 +219,5 @@ plotGamma(m,post = postGamma,
          param = "Sign", supportLevel = 0.95)
 
 getPostEstimate(fitSepTF)
-
+}
 

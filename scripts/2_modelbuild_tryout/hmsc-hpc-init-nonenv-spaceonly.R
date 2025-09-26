@@ -2,16 +2,13 @@ rm(list = ls())
 
 # Define MCMC settings
 subset_env_vars <- 0 # flip to 0 to reverse subset
-knotDistance = 0.1 # knotdistances 
+knotDistance = 0.2 # knotdistances 
 nChains <- 4
 verbose <- 100
 
-thin <- c(1000)
+thin <- c(10)
 nSamples <- c(250)
-transient <- 125000
-
-
-
+transient <- 50000
 
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
@@ -109,12 +106,6 @@ pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
 setdiff(rownames(pd_matrix),names(Y))
 # stunning 
 
-# get xycoords
-xycoords <- Design[,colnames(Design) %in% c('lat','lon','site')]
-xycoords <- distinct(xycoords)
-rownames(xycoords) <- xycoords$site
-xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
-
 # number of occurrences, make sure there are no below 5 
 info <- apply(Y,2,sum)
 table(info)
@@ -126,7 +117,6 @@ all(rownames(Tr) == colnames(Y))
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 for(i in thin){
@@ -144,16 +134,7 @@ for(i in thin){
     knotDist = knotDistance
     )
 
-
-  ### SAME ACROSS ALL MODELS
-  # Define model formulas for environmental and trait data
-  if(subset_env_vars == 1){
-    X <- X %>% 
-      select(tmean_winter,tmean_breeding,
-             prec_winter,prec_breeding,
-             hh,unique)
-  }
-  XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
+  XFormula <- as.formula(~1)
   TrFormula <- as.formula(paste("~", paste(colnames(Tr), collapse = "+"), sep = " "))
   
   Design$year <- as.numeric(as.character(Design$year))
@@ -161,6 +142,13 @@ for(i in thin){
   rownames(time) <- sort(unique(Design$year))
   struc_time <- HmscRandomLevel(sData = time)
   Design$year <- as.factor(Design$year)
+
+  # get xycoords
+  xycoords <- Design[,colnames(Design) %in% c('lat','lon','site')]
+  xycoords <- distinct(xycoords)
+  rownames(xycoords) <- xycoords$site
+  xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
+
   
   xycoords <- as.matrix(xycoords)
   xyKnots = constructKnots(xycoords,knotDist = knotDistance, minKnotDist = knotDistance)
@@ -170,8 +158,10 @@ for(i in thin){
   struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "GPP",
                                  sKnot = xyKnots)
 
+  # define priors, keep minimum 1 
+  struc_time= setPriors(struc_time,nfMin=1,nfMax=10)
+  struc_space= setPriors(struc_space,nfMin=1,nfMax=10)
 
-  print('making object')
   # define m 
   m <-Hmsc(Y = Y, XData = X, XFormula = XFormula, TrData = Tr,
            TrFormula = TrFormula, phyloTree = phy,
@@ -193,8 +183,7 @@ for(i in thin){
                          verbose = verbose,
                          engine="HPC")
   
-  # EDIT NAME OF MODEL 
-  dir_name <- paste0(date,'_samples_',j,'_gpp')
+  dir_name <- paste0(date,'_spaceonly')
   print(dir_name)
   dir.create(file.path(input,'tmp_rds',dir_name))
 
@@ -227,3 +216,4 @@ for(i in thin){
   }
   }
 }
+

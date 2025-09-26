@@ -2,14 +2,15 @@ rm(list = ls())
 
 # Define MCMC settings
 subset_env_vars <- 0 # flip to 0 to reverse subset
-knotDistance = 0.1 # knotdistances 
+knotDistance = 0.2 # knotdistances 
 nChains <- 4
 verbose <- 100
 
-thin <- c(1000)
+thin <- c(10)
 nSamples <- c(250)
-transient <- 125000
-
+transient <- 50000
+nfmin<-1
+nfmax<- c(1,3,10)
 
 
 
@@ -109,11 +110,6 @@ pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
 setdiff(rownames(pd_matrix),names(Y))
 # stunning 
 
-# get xycoords
-xycoords <- Design[,colnames(Design) %in% c('lat','lon','site')]
-xycoords <- distinct(xycoords)
-rownames(xycoords) <- xycoords$site
-xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
 
 # number of occurrences, make sure there are no below 5 
 info <- apply(Y,2,sum)
@@ -126,7 +122,8 @@ all(rownames(Tr) == colnames(Y))
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-
+for(n in nfmax){
+print(n)
 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 for(i in thin){
@@ -141,18 +138,12 @@ for(i in thin){
     nSamples = j,
     transient = transient,
     verbose = verbose,
-    knotDist = knotDistance
+    knotDist = knotDistance,
+    maxlatents = n
     )
 
 
-  ### SAME ACROSS ALL MODELS
-  # Define model formulas for environmental and trait data
-  if(subset_env_vars == 1){
-    X <- X %>% 
-      select(tmean_winter,tmean_breeding,
-             prec_winter,prec_breeding,
-             hh,unique)
-  }
+
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
   TrFormula <- as.formula(paste("~", paste(colnames(Tr), collapse = "+"), sep = " "))
   
@@ -169,9 +160,11 @@ for(i in thin){
   points(xyKnots[,2],xyKnots[,1],col='red',pch=18)
   struc_space <- HmscRandomLevel(sData = xycoords, sMethod = "GPP",
                                  sKnot = xyKnots)
+  
+  # define priors, keep minimum 1 
+  struc_time= setPriors(struc_time,nfMin=1,nfMax=n)
+  struc_space= setPriors(struc_space,nfMin=1,nfMax=n)
 
-
-  print('making object')
   # define m 
   m <-Hmsc(Y = Y, XData = X, XFormula = XFormula, TrData = Tr,
            TrFormula = TrFormula, phyloTree = phy,
@@ -193,8 +186,7 @@ for(i in thin){
                          verbose = verbose,
                          engine="HPC")
   
-  # EDIT NAME OF MODEL 
-  dir_name <- paste0(date,'_samples_',j,'_gpp')
+  dir_name <- paste0(date,'_maxlatents_',n)
   print(dir_name)
   dir.create(file.path(input,'tmp_rds',dir_name))
 
@@ -226,4 +218,5 @@ for(i in thin){
   print('Init files created')
   }
   }
+}
 }
