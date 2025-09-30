@@ -23,7 +23,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(vioplot)
   library(dplyr)
   library(abind)
-  mod <- '2025-09-26_16-15-15_singleev_tmean_year'
+  mod <- '2025-09-29_20-30-44_singleev_tmean_year_knots_212'
   input <- file.path('./tmp_rds/mods-complexity',mod)
   source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
   # other flags
@@ -259,7 +259,17 @@ if(sp_pred_flag==1){
   
   # get design and xycoords of sites  
   design <- fitSepTF$studyDesign
-  xycoords <- data.frame(fitSepTF$ranLevels$site$s@coords[drop=F])
+  xycoords <- tryCatch(
+    {
+      # First attempt
+      data.frame(fitSepTF$ranLevels$site$s@coords[drop = FALSE])
+    },
+    error = function(e) {
+      # Fallback if the above errors
+      data.frame(fitSepTF$ranLevels$site$s)
+    }
+  )
+  
   head(xycoords)
   # rename X and Y consistentely 
   col_with_max <- colnames(xycoords)[which.max(lapply(xycoords, max))]
@@ -269,7 +279,7 @@ if(sp_pred_flag==1){
   head(xycoords)
   # organize columns
   xycoords <- xycoords[,c('X','Y')]
-  
+  head(xycoords)
   # merge by rownmaes 
   merge <- merge(design,xycoords, by.x = 'site', by.y = 'row.names', all.x =T)
   rownames(merge) <- rownames(design)
