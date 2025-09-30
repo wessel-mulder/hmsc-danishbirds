@@ -14,7 +14,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(vioplot)
   start <- '.'
   python <- file.path(getwd(), 'hmsc-hpc-main',"hmsc-venv", "bin", "python3.11")
-  
+
 } 
 
 # make dirs 
