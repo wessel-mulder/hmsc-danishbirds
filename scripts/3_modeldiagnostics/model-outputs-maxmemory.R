@@ -23,8 +23,8 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(vioplot)
   library(dplyr)
   library(abind)
-  mod <- '2025-09-15_14-10-17_spaceonly'
-  input <- file.path('./tmp_rds/mods-space-nonspace',mod)
+  mod <- '2025-09-26_16-15-15_singleev_tmean_year'
+  input <- file.path('./tmp_rds/mods-complexity',mod)
   source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
   # other flags
   psrfess_flag <- 1
@@ -229,6 +229,7 @@ print('variance partitions succesfully saved')
 
 # TEST A PREDICTION -------------------------------------------------------
 if(pred_flag==1){
+
 covariates <- c('tmean_year','prec_year')
 covariate <- covariates[1]
 #parallel::mclapply(covariates, function(covariate) {
@@ -251,7 +252,76 @@ print('predictions succesfully saved')
   print('predictions skipped')
 }
 
-# GET POSTERIOR ESTIMATES 
+# SPATIAL PREDICTION ------------------------------------------------------
+
+if(sp_pred_flag==1){
+  grid <- fitSepTF$XData
+  covariates <- colnames(grid)
+  
+  # get design and xycoords of sites  
+  design <- fitSepTF$studyDesign
+  xycoords <- data.frame(fitSepTF$ranLevels$site$s@coords[drop=F])
+  head(xycoords)
+  # rename X and Y consistentely 
+  col_with_max <- colnames(xycoords)[which.max(lapply(xycoords, max))]
+  names(xycoords)[names(xycoords) == col_with_max] <- "Y"  # Rename it to "Y"
+  col_with_min <- colnames(xycoords)[which.min(lapply(xycoords, min))]
+  names(xycoords)[names(xycoords) == col_with_min] <- "X"  # Rename it to "Y"
+  head(xycoords)
+  # organize columns
+  xycoords <- xycoords[,c('X','Y')]
+  
+  # merge by rownmaes 
+  merge <- merge(design,xycoords, by.x = 'site', by.y = 'row.names', all.x =T)
+  rownames(merge) <- rownames(design)
+  highlight <- merge$highlight <- grepl("BF", merge$site)
+  
+  # Plot all points in black
+  plot(merge[,c('X','Y')])
+  # Add highlighted points in red on top
+  points(merge$X[highlight], merge$Y[highlight], col = "red")
+  
+  merge_env <- merge(merge,grid,by='row.names',all.x=T)
+  # Plot all points in black
+  plot(merge_env[,c('X','Y')])
+  # Add highlighted points in red on top
+  # overlay highlighted sites, colored by temperature
+  points(merge_env$X[highlight], merge_env$Y[highlight],
+         pch = 19, col = heat.colors(100)[cut(merge_env$tmean_year[highlight], 100)])
+
+  #construct gradient 
+  chunk_size <- 2
+  nr_prds <- nrow(merge_temp)
+  
+  idx_chunks <- split(1:nr_prds, ceiling(seq_along(1:nr_prds)/chunk_size))
+
+    # parallelize
+  results <- parallel::mclapply(idx_chunks[1:2], function(preds_subset) {
+    data_subset <- merge_temp[preds_subset,] # subset data to chunks 
+    
+    # grab coordinates for 'new' sites predictions 
+    xy_subset <- data_subset[,c('X','Y')]
+    env_subset <- data_subset[,covariates,drop=F]
+    design_subset <- data_subset[,'Row.names']
+    
+    gradient_spat <- prepareGradient(fitSepTF,
+                                     XDataNew = env_subset,
+                                     sDataNew = list(site = xy_subset))
+    predY = predict(fitSepTF,Gradient = gradient_spat,
+                    predictEtaMean=F,predictEtaMeanField=F,
+                    expected=F)
+    EpredY = Reduce("+",predY)/length(predY)
+    rownames(EpredY) <- design_subset
+    EpredY
+  },mc.cores=n_cores)
+  
+  combined <- do.call(rbind,results)
+  saveRDS(combined,file=file.path(input,'model-outputs','spatialpreds.rds'))
+
+}
+
+# POSTERIOR ESTIMATES  ----------------------------------------------------
+
 print('starting posteriors')
 if(post_estimates_flag==1){
   for(parameter in c('Beta','Omega','OmegaCor')){
@@ -259,6 +329,8 @@ if(post_estimates_flag==1){
   saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
   }
 }
+
+
 
 
 
