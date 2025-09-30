@@ -12,6 +12,8 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(dplyr)
   library(MASS)
   library(vioplot)
+  library(ggplot2)
+  
   start <- '.'
   python <- file.path(getwd(), 'hmsc-hpc-main',"hmsc-venv", "bin", "python3.11")
   
@@ -79,10 +81,16 @@ head(Design3)
 # convert to factors
 Design3$site <- as.factor(Design3$site)
 
-# get xycoords
-xycoords <- Design3 
-rownames(xycoords) <- xycoords$site
-xycoords <- xycoords[,colnames(xycoords) %in% c('lat','lon')]
+# get xycoords and project to UTM 
+xycoords <- data.frame(lon = Design3$lon,lat = Design3$lat)
+rownames(xycoords) <- Design3$site
+library(sf)
+sf_coords <- st_as_sf(xycoords, coords=c('lon','lat'),crs=4326)
+
+sf_coords_proj <- st_transform(sf_coords,crs="EPSG:23032")
+proj_xycoords <- st_coordinates(sf_coords_proj)
+head(proj_xycoords)
+plot(proj_xycoords)
 
 # SANITY CHECKS -----------------------------------------------------------
 head(Y_warblers)
@@ -112,31 +120,39 @@ ggplot(tmean_space,
   scale_color_gradientn(,colors=c('blue','red'))
 
 # TEMPERATURE MODEL  ------------------------------------------------------
+XFormula <- ~1
+X <- atlas3[,'tmean_winter',drop=F]
 
-Formula_temp <- as.formula(paste("~", paste(colnames(atlas3_temp), collapse = "+"), sep = " "))
-struc_space <- HmscRandomLevel(sData = xycoords,sMethod = 'NNGP',nNeighbours=10)
-#struc_space <- HmscRandomLevel(sData = xycoords,sMethod = 'Full',longlat = T)
+knotdist = 10000
+xyKnots = constructKnots(proj_xycoords,knotDist = knotdist,minKnotDist =  knotdist)
+plot(proj_xycoords,pch = 18)
+points(xyKnots,
+     col = 'red',
+     pch = 18,cex=0.8)
+nKnots <- nrow(xyKnots)
+#params[["nKnots"]] <- nKnots
+#params[["knotdist"]] <- knotdist
 
-struc_space$alphapw
-# checking out priors
-# standard frequencies 
-freq <- c(rep(0.01,100))
-#under 1 degree
-samples <- c(seq(from = 0.07, to = 1, length.out = 100))
+struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "GPP",
+                               sKnot = xyKnots)
+
+# set distances to min and max distances between sites 
+freq <- c(0.5,rep(0.005,100))
+samples <- c(0,seq(from = 4999, to = 477312, length.out = 100))
 small <- cbind(samples,freq)
 
 struc_space_small <- setPriors(struc_space,alphapw=small)
-struc_space_small$alphapw
 
 # define m 
 m.temp <-Hmsc(Y = Y_warblers, 
-         XData = atlas3_temp, 
-         XFormula = Formula_temp,
+         XData = X, 
+         XFormula = XFormula,
          studyDesign = Design3[,c('site'),drop=F], 
          ranLevels = list('site'=struc_space_small),
          distr='probit')
 
 m.temp$ranLevels[[1]]$alphapw
+m.temp$ranLevels
 
 nChains = 1
 test.run = T
@@ -170,6 +186,9 @@ input <- file.path('.','tmp_rds','mods-complexity','v1_tmean')
 if(!dir.exists(input)) {dir.create(input)}
 saveRDS(m.temp.sampled,file.path(input,'mod.rds'))
 saveRDS(m.temp,file.path(input,'m.rds'))
+
+# SPATIAL MODEL -----------------------------------------------------------
+
 
 # LOOKING AT PSRF & ESS  ---------------------------------------------------------
 m.temp.sampled <- readRDS(file.path(input,'mod.rds'))
@@ -498,7 +517,8 @@ plotVariancePartitioning2(m.temp.sampled,
                                             #inset=c(-0.25,0)))
 dev.off()
 }
-# PREDICTS ----------------------------------------------------------------
+# PREDICTS gradient ----------------------------------------------------------------
+
 covariate <- c('tmean_year')
 #parallel::mclapply(covariates, function(covariate) {
 
@@ -513,6 +533,55 @@ predY <- predict(m.temp.sampled, Gradient = Gradient, expected = TRUE,
 saveRDS(list(predY = predY, Gradient = Gradient),
         file = file.path(input,'model-outputs', paste0("pred_", covariate, ".rds")))
 
-plotGradient(m.temp,Gradient,predY,measure='S')
+
+# load and plot --------------------------------------------------------------------
+preds <- readRDS(file.path(input,'model-outputs','pred_tmean_year.rds'))
+
+plotGradient(m.temp.sampled,preds$Gradient,preds$predY,measure='S')
 
 
+# PREDICTS spatial --------------------------------------------------------
+# load og data 
+
+grid <- m.temp.sampled$XData
+# merge 
+design <- m.temp.sampled$studyDesign
+xycoords <- m.temp.sampled$ranLevels$site$s
+head(design)
+head(xycoords)
+
+merge <- merge(design,xycoords, by.x = 'site', by.y = 'row.names', all.x =T)
+rownames(merge) <- rownames(design)
+head(merge)
+merge_temp <- merge(merge,grid,by='row.names',all.x=T)
+head(merge_temp)
+
+#construct gradient 
+blocksize <- nrow(merge_temp)
+merge_temp_sub <- merge_temp[1:blocksize,]
+gradient_spat <- prepareGradient(m.temp.sampled,
+                                   XDataNew = data.frame(
+                                     tmean_year = merge_temp_sub$tmean_year),
+                                   sDataNew = list(site = cbind(merge_temp_sub$lon,
+                                                                merge_temp_sub$lat)))
+time <- system.time({
+predY = predict(m.temp.sampled,Gradient = gradient_spat)
+})
+time
+EpredY = Reduce("+",predY)/length(predY)
+S = rowSums(EpredY)
+xypreds <- cbind(lon = merge_temp_sub$lon,
+                 lat = merge_temp_sub$lat,
+                 rich = S)
+
+ggplot(xypreds,aes(x=lon,y=lat,col=S))+
+  geom_point(cex=3)+
+  scale_colour_gradient2(
+    low = "blue",      # color for negative values
+    mid = "ivory",     # color for zero
+    high = "red",      # color for positive values
+    midpoint = 0
+  )
+
+# actual 
+m.temp.sampled
