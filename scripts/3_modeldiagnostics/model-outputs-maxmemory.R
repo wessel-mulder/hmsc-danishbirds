@@ -217,11 +217,10 @@ print('model fit succesfully saved')
 
 
 # VP ----------------------------------------------------------------
-VP_full_output <- file.path(input,'model-outputs','VP-full.rds')
 
-if (fit_flag == 1 || all(!file.exists(VP_full_output))) {
+if (fit_flag == 1) {
 VP = computeVariancePartitioning(fitSepTF)
-
+saveRDS(VP,file=file.path(input,'model-outputs','VP.rds'))
 print('variance partitions succesfully saved')
 }else{
   print('variance partitions skipped')
@@ -277,27 +276,29 @@ if(sp_pred_flag==1){
   highlight <- merge$highlight <- grepl("BF", merge$site)
   
   # Plot all points in black
-  plot(merge[,c('X','Y')])
+  #plot(merge[,c('X','Y')])
   # Add highlighted points in red on top
-  points(merge$X[highlight], merge$Y[highlight], col = "red")
+  #points(merge$X[highlight], merge$Y[highlight], col = "red")
   
   merge_env <- merge(merge,grid,by='row.names',all.x=T)
   # Plot all points in black
-  plot(merge_env[,c('X','Y')])
+  #plot(merge_env[,c('X','Y')])
   # Add highlighted points in red on top
   # overlay highlighted sites, colored by temperature
-  points(merge_env$X[highlight], merge_env$Y[highlight],
-         pch = 19, col = heat.colors(100)[cut(merge_env$tmean_year[highlight], 100)])
+  #points(merge_env$X[highlight], merge_env$Y[highlight],
+  #       pch = 19, col = heat.colors(100)[cut(merge_env$tmean_year[highlight], 100)])
 
   #construct gradient 
-  chunk_size <- 2
-  nr_prds <- nrow(merge_temp)
+  chunk_size <- 10
+  nr_prds <- nrow(merge_env)
   
   idx_chunks <- split(1:nr_prds, ceiling(seq_along(1:nr_prds)/chunk_size))
 
     # parallelize
-  results <- parallel::mclapply(idx_chunks[1:2], function(preds_subset) {
-    data_subset <- merge_temp[preds_subset,] # subset data to chunks 
+  print(covariates)
+  results <- parallel::mclapply(idx_chunks, function(preds_subset) {
+    print(preds_subset)
+    data_subset <- merge_env[preds_subset,] # subset data to chunks 
     
     # grab coordinates for 'new' sites predictions 
     xy_subset <- data_subset[,c('X','Y')]
@@ -313,21 +314,29 @@ if(sp_pred_flag==1){
     EpredY = Reduce("+",predY)/length(predY)
     rownames(EpredY) <- design_subset
     EpredY
+
   },mc.cores=n_cores)
   
   combined <- do.call(rbind,results)
   saveRDS(combined,file=file.path(input,'model-outputs','spatialpreds.rds'))
+  print('predictions finished')
 
+}else{
+  print('predictions skipped')
 }
 
 # POSTERIOR ESTIMATES  ----------------------------------------------------
 
-print('starting posteriors')
 if(post_estimates_flag==1){
+  print('starting posteriors')
+
   for(parameter in c('Beta','Omega','OmegaCor')){
   posterior = getPostEstimate(fitSepTF, parName = parameter)
   saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
   }
+  print('posteriors finished')
+}else{
+  print('posteriors skipped')
 }
 
 
