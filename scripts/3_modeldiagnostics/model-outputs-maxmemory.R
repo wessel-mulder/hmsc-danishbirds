@@ -97,13 +97,21 @@ mpost <- convertToCodaObject(fitSepTF)
 summary(mpost)
 
 # objects in the list 
-params <- list(mpost$Beta,mpost$Gamma,mpost$Rho,mpost$V,mpost$Sigma,
-               mpost$Eta[[1]],mpost$Eta[[2]],
-               mpost$Alpha[[1]],mpost$Alpha[[2]],
-               mpost$Omega[[1]],mpost$Omega[[2]],
-               mpost$Lambda[[1]],mpost$Lambda[[2]],
-               mpost$Psi[[1]],mpost$Psi[[2]],
-               mpost$Delta[[1]],mpost$Delta[[2]])
+
+#params <- list(mpost$Beta,mpost$Gamma,mpost$Rho,mpost$V,mpost$Sigma,
+ #              mpost$Eta[[1]],mpost$Eta[[2]],
+ #              mpost$Alpha[[1]],mpost$Alpha[[2]],
+ #              mpost$Omega[[1]],mpost$Omega[[2]],
+ #              mpost$Lambda[[1]],mpost$Lambda[[2]],
+ #              mpost$Psi[[1]],mpost$Psi[[2]],
+ #              mpost$Delta[[1]],mpost$Delta[[2]])
+params <- list(mpost$Beta,mpost$Gamma,mpost$V,mpost$Sigma,
+               mpost$Eta[[1]],
+               mpost$Alpha[[1]],
+               mpost$Omega[[1]],
+               mpost$Lambda[[1]],
+               mpost$Psi[[1]],
+               mpost$Delta[[1]])
 
 diags <- list(psrf = list(), ess = list())
 chunk_size <- 10
@@ -147,8 +155,6 @@ saveRDS(diags,file=psrf_ess_output)
 print('psrf and ess succesfully saved')
 }
 
-source(file.path(source_path,'psrf-ess-plots.R'))
-source(file.path(source_path,'psrf-ess-singles.R'))
 
 # AUC-TJUR ----------------------------------------------------------------
 fit_output <- file.path(input,'model-outputs','model-fit.rds')
@@ -212,40 +218,9 @@ print('model fit succesfully saved')
 
 # VP ----------------------------------------------------------------
 VP_full_output <- file.path(input,'model-outputs','VP-full.rds')
-VP_split_output <- file.path(input,'model-outputs','VP-split.rds')
-VP_season_output <- file.path(input,'model-outputs','VP-season.rds')
 
-VP_output <- c(VP_full_output, VP_split_output, VP_season_output)
-
-if (fit_flag == 1 || all(!file.exists(VP_output))) {
+if (fit_flag == 1 || all(!file.exists(VP_full_output))) {
 VP = computeVariancePartitioning(fitSepTF)
-
-# split by groups 
-#names <- VP$groupnames
-VP_split = computeVariancePartitioning(fitSepTF,
-                                       group = c(1,1,1,
-                                                 2,2,2,
-                                                 3,3,
-                                                 rep(4,8)),
-                                       groupnames = c('temperature',
-                                                      'precipitation',
-                                                      'landscape',
-                                                      'land-use classes'))
-# split by seasons
-VP_season = computeVariancePartitioning(fitSepTF,
-                                        group = c(1,2,3,
-                                                  1,2,3,
-                                                  4,4,
-                                                  rep(5,8)),
-                                        groupnames = c('year',
-                                                       'winter',
-                                                       'breeding',
-                                                       'landscape',
-                                                       'land-use classes'))
-
-saveRDS(VP,file=VP_full_output)
-saveRDS(VP_split,file=VP_split_output)
-saveRDS(VP_season,file=VP_season_output)
 
 print('variance partitions succesfully saved')
 }else{
@@ -258,16 +233,16 @@ covariates <- c('tmean_year','prec_year')
 covariate <- covariates[1]
 #parallel::mclapply(covariates, function(covariate) {
 
-  print('starting gradient')
-  Gradient <- constructGradient(m, focalVariable = covariate, ngrid = 5)
-  print('starting predictions')
+print('starting gradient')
+Gradient <- constructGradient(m, focalVariable = covariate, ngrid = 5)
+print('starting predictions')
 
-  predY <- predict(fitSepTF, Gradient = Gradient, expected = TRUE,
-  nParallel = n_cores)
-  
-  # Save each covariate separately
-  saveRDS(list(predY = predY, Gradient = Gradient),
-          file = file.path(input,'model-outputs', paste0("pred_", covariate, ".rds")))
+predY <- predict(fitSepTF, Gradient = Gradient, expected = TRUE,
+nParallel = n_cores)
+
+# Save each covariate separately
+saveRDS(list(predY = predY, Gradient = Gradient),
+        file = file.path(input,'model-outputs', paste0("pred_", covariate, ".rds")))
   
 #}, mc.cores = 2)
 
@@ -279,7 +254,7 @@ print('predictions succesfully saved')
 # GET POSTERIOR ESTIMATES 
 print('starting posteriors')
 if(post_estimates_flag==1){
-  for(parameter in c('Beta','Gamma','Omega','OmegaCor')){
+  for(parameter in c('Beta','Omega','OmegaCor')){
   posterior = getPostEstimate(fitSepTF, parName = parameter)
   saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
   }
