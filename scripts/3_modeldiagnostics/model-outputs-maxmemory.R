@@ -160,8 +160,15 @@ print('psrf and ess succesfully saved')
 fit_output <- file.path(input,'model-outputs','model-fit.rds')
 
 ### HEAVY 
-if (fit_flag == 1 || !file.exists(fit_output)) {
-preds  <- pcomputePredictedValues(fitSepTF,expected=T)
+if (fit_flag == 1) {
+preds_expected  <- pcomputePredictedValues(fitSepTF,expected=T)
+#preds  <- pcomputePredictedValues(fitSepTF,expected=F)
+
+mean_expected <- apply(preds_expected,c(1,2),mean)
+#mean <- apply(preds,c(1,2),mean)
+
+saveRDS(mean_expected,file=file.path(input,'model-outputs','pred-vals.rds'))
+
 MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
 saveRDS(MF,file=fit_output)
 

@@ -81,37 +81,6 @@ head(Design3)
 # convert to factors
 Design3$site <- as.factor(Design3$site)
 
-# get xycoords and project to UTM 
-xycoords <- data.frame(lon = Design3$lon,lat = Design3$lat)
-rownames(xycoords) <- Design3$site
-library(sf)
-sf_coords <- st_as_sf(xycoords, coords=c('lon','lat'),crs=4326)
-
-sf_coords_proj <- st_transform(sf_coords,crs="EPSG:23032")
-proj_xycoords <- st_coordinates(sf_coords_proj)
-rownames(proj_xycoords) <- rownames(xycoords)
-head(proj_xycoords)
-
-
-# make SpatialPointsDataFrame
-xycoords <- data.frame(lon = Design3$lon, lat = Design3$lat, row.names = Design3$site)
-sp_coords <- SpatialPointsDataFrame(
-  coords = xycoords,
-  data   = data.frame(site = rownames(xycoords)),
-  proj4string = CRS("+proj=longlat +datum=WGS84") # WGS84
-)
-
-plot(sp_coords)
-# project to UTM zone 32 (ETRS89 / UTM zone 32N, EPSG:23032)
-sp_coords_proj <- spTransform(sp_coords, CRS("+init=epsg:23032"))
-plot(sp_coords_proj)
-# extract coordinates
-proj_xycoords <- coordinates(sp_coords_proj)
-rownames(proj_xycoords) <- rownames(xycoords)
-colnames(proj_xycoords) <- c('X','Y')
-
-head(proj_xycoords)
-
 library(terra)
 
 xycoords <- data.frame(lon = Design3$lon, lat = Design3$lat)
@@ -123,7 +92,7 @@ v_proj <- project(v, "EPSG:23032")
 proj_xycoords <- crds(v_proj)
 rownames(proj_xycoords) <- rownames(xycoords)
 head(proj_xycoords)
-
+plot(proj_xycoords)
 
 # SANITY CHECK  -----------------------------------------------------------
 ### XY DISTRIBUTION OF ENVIRONMENT
