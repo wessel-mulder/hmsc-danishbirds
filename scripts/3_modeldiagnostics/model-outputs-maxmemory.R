@@ -226,6 +226,20 @@ print('variance partitions succesfully saved')
   print('variance partitions skipped')
 }
 
+# POSTERIOR ESTIMATES  ----------------------------------------------------
+
+if(post_estimates_flag==1){
+  print('starting posteriors')
+
+  for(parameter in c('Beta','Omega','OmegaCor')){
+  posterior = getPostEstimate(fitSepTF, parName = parameter)
+  saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
+  }
+  print('posteriors finished')
+}else{
+  print('posteriors skipped')
+}
+
 # TEST A PREDICTION -------------------------------------------------------
 if(pred_flag==1){
 
@@ -250,6 +264,8 @@ print('predictions succesfully saved')
 }else{
   print('predictions skipped')
 }
+
+
 
 # SPATIAL PREDICTION ------------------------------------------------------
 
@@ -335,19 +351,7 @@ if(sp_pred_flag==1){
   print('predictions skipped')
 }
 
-# POSTERIOR ESTIMATES  ----------------------------------------------------
 
-if(post_estimates_flag==1){
-  print('starting posteriors')
-
-  for(parameter in c('Beta','Omega','OmegaCor')){
-  posterior = getPostEstimate(fitSepTF, parName = parameter)
-  saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
-  }
-  print('posteriors finished')
-}else{
-  print('posteriors skipped')
-}
 
 
 
