@@ -169,7 +169,7 @@ mean_expected <- apply(preds_expected,c(1,2),mean)
 
 saveRDS(mean_expected,file=file.path(input,'model-outputs','pred-vals.rds'))
 
-MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
+MF <- evaluateModelFit(hM=fitSepTF, predY=preds_expected)
 saveRDS(MF,file=fit_output)
 
 print('model fit succesfully saved')
