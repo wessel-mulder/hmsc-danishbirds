@@ -1,13 +1,12 @@
+rm(list = ls())
 args <- commandArgs(trailingOnly = TRUE)
 
-mod = args[1]
-
-# other flags
-psrfess_flag <- args[2]
-fit_flag <- args[3]
-VP_flag <- args[4]
-pred_flag <- args[5]
-sp_pred_flag <- args[6]
+between <- 'mods-complexity-v1'
+dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
+inaloop <- F
+for(dir in seq_along(dirs)){
+  if(!dir %in% c(2,8)){
+  inaloop <- T
 
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
@@ -20,14 +19,26 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(colorspace)
   library(vioplot)
   library(dplyr)
-  mod <- '2025-09-10_11-14-06_samples_250_thin_1000'
-  input <- file.path('./tmp_rds/mods-single',mod)
+  library(fields)
+  library(RColorBrewer)
+  library(reshape2)
+  library(ggplot2)
+  
+
+  mod <- '2025-09-26_16-15-15_singleev_tmean_year'
+  between <- 'mods-complexity-v1'
+  input <- file.path('./tmp_rds',between,mod)
+  if(inaloop){
+  input <- dirs[dir]
+  print(input)
+  }
   source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
   
 } else {
   message("Running from terminal or non-interactive environment")
   rstudio = 0
   library(RColorBrewer,lib="~/Rlibs")
+  library(fields,lib="~/Rlibs")
   library(farver,lib="~/Rlibs")
   library(scales,lib="~/Rlibs")
   library(jsonify,lib="~/Rlibs")
@@ -36,6 +47,11 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(Hmsc,lib="~/Rlibs")
   library(colorspace,lib="~/Rlibs")
   library(vioplot,lib="~/Rlibs")
+  library(corrplot,lib='~/Rlibs')
+  library(reshape2,lib='~/Rlibs')
+  library(ggplot2,lib='~/Rlibs')
+  
+  
   input <- file.path('~/home/projects/hmsc-danishbirds/tmp_rds',mod)
   source_path <- file.path('~/home/projects/hmsc-danishbirds/scripts/3_modeldiagnostics/plotting-scripts')
   
@@ -70,7 +86,7 @@ for(cInd in 1:nChains){
 filteredList <- chainList
 
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
-
+mpost <-convertToCodaObject(fitSepTF)
 print('model succesfully loaded')
 
 # LOADING DATA --------------------------------------------------------
@@ -78,32 +94,75 @@ print('starting psrf-ess plots')
 
 diags <- readRDS(file.path(input,'model-outputs','psrf-ess.rds'))
 
-source(file.path(source_path,'psrf-ess-plots.R'))
-source(file.path(source_path,'psrf-ess-singles.R'))
-
+if(between == 'mods-complexity-v1'){
+  source(file.path(source_path,'psrf-ess-plots-complexity-v1.R'))
+}else{
+  source(file.path(source_path,'psrf-ess-plots.R'))
+  source(file.path(source_path,'psrf-ess-singles.R'))
+}
 # AUC / TJUR --------------------------------------------------------------
 # get preds 
 print('starting fit-tjur plots')
-
 MF <- readRDS(file.path(input,'model-outputs','model-fit.rds'))
-source(file.path(source_path,'auc-tjur-plots.R'))
+if(between == 'mods-complexity-v1'){
+  source(file.path(source_path,'auc-tjur-plots-complexity-v1.R'))
+}else{
+  source(file.path(source_path,'auc-tjur-plots.R'))
+}
 
 
 # VP ----------------------------------------------------------------------
 print('starting VP plots')
 
-VP <- readRDS(file.path(input,'model-outputs','VP-full.rds'))
-VP_split <- readRDS(file.path(input,'model-outputs','VP-split.rds'))
-VP_season <- readRDS(file.path(input,'model-outputs','VP-season.rds'))
+VP <- readRDS(file.path(input,'model-outputs','VP.rds'))
+if(between == 'mods-complexity-v1'){
+  source(file.path(source_path,'VP-plots-complexity-v1.R'))
+}else{
+#VP_split <- readRDS(file.path(input,'model-outputs','VP-split.rds'))
+#VP_season <- readRDS(file.path(input,'model-outputs','VP-season.rds'))
 source(file.path(source_path,'VP-plots.R'))
+}
+
+
+# SPATIAL PREDICTIONS  ----------------------------------------------------
+print('starting spatial preds ')
+preds <- readRDS(file.path(input,'model-outputs','pred-vals.rds'))
+print(head(preds))
+if(between == 'mods-complexity-v1'){
+  source(file.path(source_path,'spatial-preds-complexity-v1.R'))
+  source(file.path(source_path,'spatial-preds-species-complexity-v1.R'))
+  
+}else{
+
+}
+
+# POSTERIOR ESTIMATES  ----------------------------------------------------
+print('starting post estimates')
+postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
+if(between == 'mods-complexity-v1'){
+  print('start omega')
+  source(file.path(source_path,'posterior-omega-corrplot-complexity-v1.R'))
+  source(file.path(source_path,'posterior-beta-complexity-v1.R'))
+  
+}else{
+
+}
+
+# CHAINS ------------------------------------------------------------------
+
 
 # VP BY GUILD / STRATEGY  ------------------------------------------------------------
 print('starting VP guild/migration plots')
+if(between == 'mods-complexity-v1'){
+}else{
+  source(file.path(source_path,'VP-guild-plots.R'))
+  source(file.path(source_path,'VP-migration-plots.R'))
+}
 
-source(file.path(source_path,'VP-guild-plots.R'))
-source(file.path(source_path,'VP-migration-plots.R'))
 
 # VP SORTED BY CLASSES  ---------------------------------------------------------------
+if(between == 'mods-complexity-v1'){
+}else{
 # get number of species occurrences
 # sorted by classes 
 print('starting VP other plots')
@@ -131,8 +190,6 @@ Hmsc::plotVariancePartitioning(m,VP_guild,
                                args.legend = list(x = 'topright',
                                                   inset=c(-0.25,0)))
 }
-
-# VP SORTED BY MOST IMPORTANT TO A SPECIES  -------------------------------
 # most important vars 
 
 print('starting VP omosti mportant VAR plots')
@@ -235,109 +292,111 @@ dev.off()
 
 
 dev.new()
-
-
-# PARAMETER ESTIMATES -----------------------------------------------------
-plot.new()
-postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
-plotBeta(m,post = postBeta, 
-         param = "Sign", supportLevel = 0.95)
-postGamma <- readRDS(file.path(input,'model-outputs','posterior-Gamma.rds'))
-plotGamma(m,post = postGamma, 
-         param = "Mean", supportLevel = 0.95)
-
-getPostEstimate(fitSepTF)
-
-postAlpha <- getPostEstimate(fitSepTF,parName='Alpha',r=2)
-mpost<-convertToCodaObject(fitSepTF)
-
-# spatial structure
-summary(mpost$Alpha[[1]])[2]$quantiles[1,]
-# temporal structure
-summary(mpost$Alpha[[2]])[2]$quantiles[1,]
-
-summary(mpost$Alpha[[2]])
-
-fitSepTF
-
-postEta <- getPostEstimate(fitSepTF,parName='Eta')
-summary(postEta$support)
-
-
-i <- 1
-for(i in 1:ncol(postEta$mean)){
-  eta <- postEta$mean[,i]
-  eta2 <- cbind(eta,xy)
-  p<-ggplot(eta2,aes(x=lon,y=lat,col=eta))+
-    geom_point(cex=3)+
-    labs(title=i)+
-    scale_colour_gradient2(
-      low = "blue",      # color for negative values
-      mid = "ivory",     # color for zero
-      high = "red",      # color for positive values
-      midpoint = 0
-    )
-  print(p)
 }
 
-xy <- fitSepTF$rL[[1]]$s
-
-summary(mpost$Alpha[[1]])[2]
-
-
-
-eta2_df <- cbind(eta2,xy)
-ggplot(eta2_df,aes(x=lon,y=lat,col=eta2))+
-  geom_point(cex=3)+
-  scale_colour_gradient2(
-    low = "blue",      # color for negative values
-    mid = "ivory",     # color for zero
-    high = "red",      # color for positive values
-    midpoint = 0
-  )
-
-eta3_df <- cbind(eta3,xy)
-ggplot(eta3_df,aes(x=lon,y=lat,col=eta3))+
-  geom_point(cex=3)+
-  scale_colour_gradient2(
-    low = "blue",      # color for negative values
-    mid = "ivory",     # color for zero
-    high = "red",      # color for positive values
-    midpoint = 0
-  )
-
-eta4_df <- cbind(eta4,xy)
-ggplot(eta4_df,aes(x=lon,y=lat,col=eta4))+
-  geom_point(cex=3)+
-  scale_colour_gradient2(
-    low = "blue",      # color for negative values
-    mid = "ivory",     # color for zero
-    high = "red",      # color for positive values
-    midpoint = 0
-  )
-
-eta5_df <- cbind(eta5,xy)
-ggplot(eta5_df,aes(x=lon,y=lat,col=eta5))+
-  geom_point(cex=3)+
-  scale_colour_gradient2(
-    low = "blue",      # color for negative values
-    mid = "ivory",     # color for zero
-    high = "red",      # color for positive values
-    midpoint = 0
-  )
-
-eta6_df <- cbind(eta6,xy)
-ggplot(eta6_df,aes(x=lon,y=lat,col=eta6))+
-  geom_point(cex=3)+
-  scale_colour_gradient2(
-    low = "blue",      # color for negative values
-    mid = "ivory",     # color for zero
-    high = "red",      # color for positive values
-    midpoint = 0
-  )
+# PARAMETER ESTIMATES -----------------------------------------------------
+# plot.new()
+# postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
+# plotBeta(m,post = postBeta,
+#          param = "Sign", supportLevel = 0.95)
+# postGamma <- readRDS(file.path(input,'model-outputs','posterior-Gamma.rds'))
+# plotGamma(m,post = postGamma,
+#          param = "Mean", supportLevel = 0.95)
+# 
+# getPostEstimate(fitSepTF)
+# 
+# postAlpha <- getPostEstimate(fitSepTF,parName='Alpha',r=2)
+# mpost<-convertToCodaObject(fitSepTF)
+# 
+# # spatial structure
+# summary(mpost$Alpha[[1]])[2]$quantiles[1,]
+# # temporal structure
+# summary(mpost$Alpha[[2]])[2]$quantiles[1,]
+# 
+# summary(mpost$Alpha[[2]])
+# 
+# fitSepTF
+# 
+# postEta <- getPostEstimate(fitSepTF,parName='Eta')
+# summary(postEta$support)
+# 
+# 
+# i <- 1
+# for(i in 1:ncol(postEta$mean)){
+#   eta <- postEta$mean[,i]
+#   eta2 <- cbind(eta,xy)
+#   p<-ggplot(eta2,aes(x=lon,y=lat,col=eta))+
+#     geom_point(cex=3)+
+#     labs(title=i)+
+#     scale_colour_gradient2(
+#       low = "blue",      # color for negative values
+#       mid = "ivory",     # color for zero
+#       high = "red",      # color for positive values
+#       midpoint = 0
+#     )
+#   print(p)
+# }
+# 
+# xy <- fitSepTF$rL[[1]]$s
+# 
+# summary(mpost$Alpha[[1]])[2]
+# 
+# 
+# 
+# eta2_df <- cbind(eta2,xy)
+# ggplot(eta2_df,aes(x=lon,y=lat,col=eta2))+
+#   geom_point(cex=3)+
+#   scale_colour_gradient2(
+#     low = "blue",      # color for negative values
+#     mid = "ivory",     # color for zero
+#     high = "red",      # color for positive values
+#     midpoint = 0
+#   )
+# 
+# eta3_df <- cbind(eta3,xy)
+# ggplot(eta3_df,aes(x=lon,y=lat,col=eta3))+
+#   geom_point(cex=3)+
+#   scale_colour_gradient2(
+#     low = "blue",      # color for negative values
+#     mid = "ivory",     # color for zero
+#     high = "red",      # color for positive values
+#     midpoint = 0
+#   )
+# 
+# eta4_df <- cbind(eta4,xy)
+# ggplot(eta4_df,aes(x=lon,y=lat,col=eta4))+
+#   geom_point(cex=3)+
+#   scale_colour_gradient2(
+#     low = "blue",      # color for negative values
+#     mid = "ivory",     # color for zero
+#     high = "red",      # color for positive values
+#     midpoint = 0
+#   )
+# 
+# eta5_df <- cbind(eta5,xy)
+# ggplot(eta5_df,aes(x=lon,y=lat,col=eta5))+
+#   geom_point(cex=3)+
+#   scale_colour_gradient2(
+#     low = "blue",      # color for negative values
+#     mid = "ivory",     # color for zero
+#     high = "red",      # color for positive values
+#     midpoint = 0
+#   )
+# 
+# eta6_df <- cbind(eta6,xy)
+# ggplot(eta6_df,aes(x=lon,y=lat,col=eta6))+
+#   geom_point(cex=3)+
+#   scale_colour_gradient2(
+#     low = "blue",      # color for negative values
+#     mid = "ivory",     # color for zero
+#     high = "red",      # color for positive values
+#     midpoint = 0
+#   )
 
 
 # TRACE PLOTS -------------------------------------------------------------
+if(between == 'mods-complexity-v1'){
+}else{
 par(mfrow=c(1,1))
 library(rethinking)
 
@@ -357,5 +416,7 @@ plot(mpost$Alpha[[1]][,1:4])
 traceplot(mpost$Alpha[[1]])
 plot(mpost$Beta[,1:10],auto.layout=F)
 dev.new()
-
+}
+  }
+}
 
