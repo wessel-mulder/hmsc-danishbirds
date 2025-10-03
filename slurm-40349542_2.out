@@ -1,0 +1,107 @@
+Running from terminal or non-interactive environment
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:ape’:
+
+    where
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Loading required package: coda
+Loading required package: sm
+Package 'sm', version 2.2-6.0: type help(sm) for summary information
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+              Length Class           Mode     
+Y             25884  -none-          numeric  
+XData             1  data.frame      list     
+XFormula          2  formula         call     
+X              4314  -none-          numeric  
+XScaled        4314  -none-          numeric  
+XRRRData          0  -none-          NULL     
+XRRRFormula       0  -none-          NULL     
+XRRRScaled        0  -none-          NULL     
+YScaled       25884  -none-          numeric  
+XInterceptInd     1  -none-          numeric  
+studyDesign       1  data.frame      list     
+ranLevels         1  -none-          list     
+ranLevelsUsed     1  -none-          character
+dfPi              1  data.frame      list     
+rL                1  -none-          list     
+Pi             2157  -none-          numeric  
+TrData            0  -none-          NULL     
+TrFormula         0  -none-          NULL     
+Tr               12  -none-          numeric  
+TrScaled         12  -none-          numeric  
+C                 0  -none-          NULL     
+phyloTree         0  -none-          NULL     
+distr            24  -none-          numeric  
+ny                1  -none-          numeric  
+ns                1  -none-          numeric  
+nc                1  -none-          numeric  
+ncNRRR            1  -none-          numeric  
+ncRRR             1  -none-          numeric  
+ncORRR            1  -none-          numeric  
+ncsel             1  -none-          numeric  
+nr                1  -none-          numeric  
+nt                1  -none-          numeric  
+nf                0  -none-          NULL     
+ncr               0  -none-          NULL     
+ncs               0  -none-          NULL     
+np                1  -none-          numeric  
+spNames          12  -none-          character
+covNames          2  -none-          character
+trNames           1  -none-          character
+rLNames           1  -none-          character
+XScalePar         4  -none-          numeric  
+XRRRScalePar      0  -none-          NULL     
+YScalePar        24  -none-          numeric  
+TrScalePar        2  -none-          numeric  
+V0                4  -none-          numeric  
+f0                1  -none-          numeric  
+mGamma            2  -none-          numeric  
+UGamma            4  -none-          numeric  
+aSigma           12  -none-          numeric  
+bSigma           12  -none-          numeric  
+rhopw           202  -none-          numeric  
+nuRRR             1  -none-          numeric  
+a1RRR             1  -none-          numeric  
+b1RRR             1  -none-          numeric  
+a2RRR             1  -none-          numeric  
+b2RRR             1  -none-          numeric  
+samples           0  -none-          NULL     
+transient         0  -none-          NULL     
+thin              0  -none-          NULL     
+verbose           0  -none-          NULL     
+adaptNf           0  -none-          NULL     
+initPar           0  -none-          NULL     
+repN              0  -none-          NULL     
+randSeed          0  -none-          NULL     
+postList          0  -none-          NULL     
+call              7  -none-          call     
+HmscVersion       1  package_version list     
+[1] "~/home/projects/hmsc-danishbirds/tmp_rds/2025-09-29_20-30-44_singleev_tmean_year_knots_704/post_chain00_file.rds"
+[1] "~/home/projects/hmsc-danishbirds/tmp_rds/2025-09-29_20-30-44_singleev_tmean_year_knots_704/post_chain01_file.rds"
+[1] "~/home/projects/hmsc-danishbirds/tmp_rds/2025-09-29_20-30-44_singleev_tmean_year_knots_704/post_chain02_file.rds"
+[1] "~/home/projects/hmsc-danishbirds/tmp_rds/2025-09-29_20-30-44_singleev_tmean_year_knots_704/post_chain03_file.rds"
+[1] "model succesfully loaded"
+[1] "psrf and ess skipped"
+[1] "model fit skipped"
+[1] "variance partitions skipped"
+[1] "starting posteriors"
+[1] "posteriors finished"
+[1] "predictions skipped"
+[1] "predictions skipped"
