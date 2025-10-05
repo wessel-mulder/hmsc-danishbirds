@@ -68,6 +68,7 @@ X <- na.omit(X)
 X3 <- X[rownames(X)[grep("_3$", rownames(X))],,drop=F]
 
 for(threshold in ocean_thresholds){
+  print('loading data')
 
   atlas3 <- X3[X3$LULC_0<threshold,]
 
@@ -161,23 +162,18 @@ for(threshold in ocean_thresholds){
                            verbose = verbose,
                            engine="HPC")
     
-    thname <- paste0(round(ocean_thresholds * 100), "pct")
+    thname <- paste0(round(threshold * 100), "pct")
     dir_name <- paste0(date,'_singleev_',env,'_oceanthresholds_',thname)
+    print(input)
     print(dir_name)
+    print(file.path(input,'tmp_rds',dir_name))
     dir.create(file.path(input,'tmp_rds',dir_name))
     
     init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
     m_file_path = file.path(input,'tmp_rds',dir_name, "m_object.rds")
     param_file_path = file.path(input,'tmp_rds',dir_name, "params.rds")
     lines <- paste(names(params), unlist(params), sep = "=")
-    writeLines(lines, file.path(input,'tmp_rds',dir_name, "params.txt"))
-    pdf(file.path(input,'tmp_rds',dir_name,'knots.pdf'))
-      plot(proj_xycoords[,1],proj_xycoords[,2],pch=18, asp=1,
-         main=paste0('Number of knots: ',nKnots))
-    points(xyKnots[,1],xyKnots[,2],col='red',pch=18)
-    print(nKnots)
-    dev.off()
-    
+    writeLines(lines, file.path(input,'tmp_rds',dir_name, "params.txt"))    
     
     # save as json 
     saveRDS(to_json(init_obj), file=init_file_path)
@@ -196,6 +192,33 @@ for(threshold in ocean_thresholds){
                             "--verbose", verbose)
     cat(paste(shQuote(python), python_cmd_args), "\n")
     print('Init files created')
-    }
+
+
+# --- Auto-backup of the running script ----------------------------------------
+
+# Try to detect the current script path
+args <- commandArgs(trailingOnly = FALSE)
+script_path <- NULL
+
+if ("--file=" %in% substr(args, 1, 7)) {
+  # Works for Rscript or batch jobs
+  script_path <- normalizePath(sub("--file=", "", args[grep("--file=", args)]))
+} else if (!is.null(sys.frames()) && !is.na(sys.frames()[[1]]$ofile)) {
+  # Fallback for interactive runs in RStudio
+  script_path <- normalizePath(sys.frames()[[1]]$ofile)
+}
+
+if (!is.null(script_path) && file.exists(script_path)) {
+  backup_file <- file.path(
+    file.path(input,'tmp_rds',dir_name),
+    paste0(format(Sys.time(), "%Y-%m-%d_%H-%M-%S_"), basename(script_path))
+  )
+
+  file.copy(script_path, backup_file, overwrite = TRUE)
+  message("✅ Script copied to: ", backup_file)
+} else {
+  warning("⚠️ Could not determine script path — are you running interactively?")
+}
   }
+}
 }
