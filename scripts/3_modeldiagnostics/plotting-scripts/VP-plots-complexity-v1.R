@@ -16,16 +16,25 @@ plotVariancePartitioning2 =
                      ")", sep = "")
     }
     
-    barplot(VP$vals, main = main, xlab= " ", ylab = "Total variance", las = 1,
-            legend = leg, col = cols,...)
-    #   mtext("Species", 1,line = 1)
+    VP$vals <- VP$vals[,rev(colnames(VP$vals))]
+    barplot(VP$vals, main = main, xlab= " ", ylab = "",las = 1, horiz=T,
+            legend = leg, col = cols,
+            #las = 2,
+            border = NA,
+            space=0.1,
+            ann=T,
+            xlim=c(0,1),
+            args.legend = list(x = 'topright',
+                               inset = c(0.02,0.05),
+                               bg = 'white'),...)
+    #rotate 60 degrees (srt = 60)
   }
 
 
 pdf(file=file.path(input,'results','VP.pdf'),
     width = 10,
-    height = 5)
-par(mar = c(10,5,5,2))
+    height = 15)
+par(mar = c(5,10,2,2))
 
 VP_2 <- VP
 
@@ -42,21 +51,20 @@ if(VP$groupnames == 'tmean_year'){
 }
 
 VP_2$groupnames <- alt_name
-tjurs <- MF$TjurR2
-VP_2$vals <- VP$vals * tjurs
+
+
 colnames(VP_2$vals) <- sub("^([A-Za-z])[A-Za-z]+_([a-z]+)$", "\\1. \\2", colnames(VP_2$vals))
-
-
 plotVariancePartitioning2(fitSepTF,
                           cols = colorway,
                           VP_2,
-                          main = 'Total variance explained',
-                          las = 2,
-                          border = NA,
-                          space=0.01,
-                          ann=T,
-                          ylim=c(0,1),
-                          args.legend = list(x = 'topright'))
-#inset=c(-0.25,0)))
-dev.off()
+                          main = 'Proportion of variance explained')
 
+# get MF vals 
+MF <- readRDS(file.path(input,'model-outputs','model-fit.rds'))
+tjurs <- MF$TjurR2
+VP_2$vals <- sweep(VP_2$vals, 2, tjurs, "*")
+plotVariancePartitioning2(fitSepTF,
+                          cols = colorway,
+                          VP_2,
+                          main = 'Total variance explained')
+dev.off()

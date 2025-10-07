@@ -29,7 +29,7 @@ plotBetaSign <- function(m,
     
     colNames <- abbreviate_genus(m$spNames)   # Species
     
-    rowLabel <- "Environmental Niche"
+    rowLabel <- "Environmental variable"
     colLabel <- "Species"
     
     # Format the data as sign or mean

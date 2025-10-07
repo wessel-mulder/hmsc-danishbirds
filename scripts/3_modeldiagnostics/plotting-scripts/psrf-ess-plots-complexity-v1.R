@@ -1,5 +1,5 @@
 # PLOTTING PARAMETERS 
-params <- list(mpost$Beta,mpost$Gamma,mpost$V,mpost$Sigma,
+params <- list(mpost$Beta,mpost$Gamma,mpost$V,
                mpost$Eta[[1]],
                mpost$Alpha[[1]],
                mpost$Omega[[1]],
@@ -12,7 +12,6 @@ params <- list(mpost$Beta,mpost$Gamma,mpost$V,mpost$Sigma,
 full_names <- c("Species x Environment",
                 "Traits x Environment",
                 "Residual covariance (species niches)",
-                'Residual variance (occurrences)',
                 'Site loadings 1',
                 'Scale of latent factors 1',
                 "Species associations 1",
@@ -20,12 +19,8 @@ full_names <- c("Species x Environment",
                 'Local shrinkage - species loadings 1',
                 'Global shrinkage - species loadings 1')
 
-                
-                 
-                
-
 # plot colors 
-cols <- c('green4','purple4','orange4','firebrick',
+cols <- c('green4','purple4','orange4',
           'cornsilk3','ivory','blue4',
           'lightblue','cyan3','cyan4')
 
@@ -48,9 +43,8 @@ print('psrf plot full')
 
 all_psrf <- lapply(all_psrf, function(x) {
   summary(x)
-  x[!is.finite(x)] <- 10
-  x[is.na(x)] <- 10
-  if(!length(x)){
+  x[!is.finite(x)] <- 1
+  if (length(unique(x)) == 1) {
     x[2] <- x[1] + 0.001
   }
   x

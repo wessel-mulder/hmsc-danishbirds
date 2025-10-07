@@ -76,7 +76,11 @@ par(mar=c(10,5,5,5))
 
 
 # PREDICTIONS 
-cols <- pal(ncolz)[as.numeric(cut(xyrich$rich, breaks = seq(0, nspecies, length.out = ncolz)))]
+cols <- pal(ncolz)[as.numeric(cut(
+  xyrich$rich, 
+  breaks = seq(0, nspecies, length.out = ncolz),
+  include.lowest = T
+))]
 
 # plot the points
 plot(xyrich$X, xyrich$Y, col = cols, pch = 19,
@@ -86,7 +90,7 @@ plot(xyrich$X, xyrich$Y, col = cols, pch = 19,
 
 # fixed legend from 0 to 12
 image.plot(legend.only = TRUE,
-           zlim = c(0, 12),      # force scale 0-12
+           zlim = c(0, nspecies),      # force scale 0-12
            col = pal(ncolz),
            legend.lab = "Richness",
            horizontal = T)
@@ -107,19 +111,26 @@ plot(og_xyrich$X, og_xyrich$Y, col = og_cols, pch = 19,
 
 # fixed legend from 0 to 12
 image.plot(legend.only = TRUE,
-           zlim = c(0, 12),      # force scale 0-12
+           zlim = c(0, nspecies),      # force scale 0-12
            col = pal(ncolz),
            legend.lab = "Richness",
            horizontal = T)
 
 # DIFFERENCE 
-diff_cols <- pal(ncolz)[as.numeric(cut(xydiff$rich, breaks = seq(min(xydiff$rich), max(xydiff$rich), length.out = ncolz)))]
+diff_cols <- pal(ncolz)[as.numeric(cut(
+  xydiff$rich, 
+  breaks = seq(scale_bar_richness[1], scale_bar_richness[2], length.out = ncolz),
+  include.lowest=T
+))]
+if (any(is.na(diff_cols))) {
+  stop("Error: There are NA values in diff_cols. Edit the scale bar")
+}
 plot(xydiff$X, xydiff$Y, col = diff_cols, pch = 19,
      xlab = 'X',
      ylab = 'Y',
      main = 'Predictions - observed')
 image.plot(legend.only = TRUE,
-           zlim = c(-2,2),      # force scale 
+           zlim = scale_bar_richness,      # force scale 
            col = pal(ncolz),
            legend.lab = "Difference",
            horizontal = T)

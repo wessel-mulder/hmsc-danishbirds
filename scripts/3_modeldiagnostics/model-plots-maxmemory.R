@@ -4,9 +4,20 @@ args <- commandArgs(trailingOnly = TRUE)
 between <- 'mods-complexity-v1'
 dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
 inaloop <- F
+
+psrfess_flag <- 0
+fit_flag <- 0
+VP_flag <- 0
+pred_flag <- 0
+chains_flag <- 1
+post_estimates_flag <- 0
+
+#dirs <- dirs[11]
 for(dir in seq_along(dirs)){
-  if(!dir %in% c(2,8)){
-  inaloop <- T
+  print(dir)
+# if(grepl('oceanthresholds',dirs[dir])){
+ #   print('T')
+    inaloop <- T
 
 # GETTING STARTED ---------------------------------------------------------
 if (interactive() && Sys.getenv("RSTUDIO") == "1") {
@@ -77,7 +88,7 @@ transient <- params$transient
 chainList = vector("list", nChains)
 for(cInd in 1:nChains){
   chain_file_path = file.path(input, sprintf("post_chain%.2d_file.rds", cInd-1))
-  print(chain_file_path)
+  #print(chain_file_path)
   if(file.exists(chain_file_path)) {
     chainList[[cInd]] = from_json(readRDS(file = chain_file_path)[[1]])[[1]]
   }
@@ -90,6 +101,7 @@ mpost <-convertToCodaObject(fitSepTF)
 print('model succesfully loaded')
 
 # LOADING DATA --------------------------------------------------------
+if(psrfess_flag == 1){
 print('starting psrf-ess plots')
 
 diags <- readRDS(file.path(input,'model-outputs','psrf-ess.rds'))
@@ -100,8 +112,10 @@ if(between == 'mods-complexity-v1'){
   source(file.path(source_path,'psrf-ess-plots.R'))
   source(file.path(source_path,'psrf-ess-singles.R'))
 }
+}
 # AUC / TJUR --------------------------------------------------------------
 # get preds 
+if(fit_flag == 1){
 print('starting fit-tjur plots')
 MF <- readRDS(file.path(input,'model-outputs','model-fit.rds'))
 if(between == 'mods-complexity-v1'){
@@ -109,11 +123,11 @@ if(between == 'mods-complexity-v1'){
 }else{
   source(file.path(source_path,'auc-tjur-plots.R'))
 }
-
+}
 
 # VP ----------------------------------------------------------------------
+if(VP_flag == 1){
 print('starting VP plots')
-
 VP <- readRDS(file.path(input,'model-outputs','VP.rds'))
 if(between == 'mods-complexity-v1'){
   source(file.path(source_path,'VP-plots-complexity-v1.R'))
@@ -122,21 +136,23 @@ if(between == 'mods-complexity-v1'){
 #VP_season <- readRDS(file.path(input,'model-outputs','VP-season.rds'))
 source(file.path(source_path,'VP-plots.R'))
 }
-
+}
 
 # SPATIAL PREDICTIONS  ----------------------------------------------------
+if(pred_flag == 1){
+scale_bar_richness <- c(-4,4)
 print('starting spatial preds ')
 preds <- readRDS(file.path(input,'model-outputs','pred-vals.rds'))
-print(head(preds))
+#print(head(preds))
 if(between == 'mods-complexity-v1'){
   source(file.path(source_path,'spatial-preds-complexity-v1.R'))
   source(file.path(source_path,'spatial-preds-species-complexity-v1.R'))
-  
 }else{
 
 }
-
+}
 # POSTERIOR ESTIMATES  ----------------------------------------------------
+if(post_estimates_flag == 1){
 print('starting post estimates')
 postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
 if(between == 'mods-complexity-v1'){
@@ -147,9 +163,92 @@ if(between == 'mods-complexity-v1'){
 }else{
 
 }
-
+}
 # CHAINS ------------------------------------------------------------------
+if(chains_flag == 1){
+  if(between == 'mods-complexity-v1'){
+    # plot traceplots 
+    pdf(file=file.path(input,'results','traceplots-alpha.pdf'),
+        width = 10,
+        height = 15)
+    plot(mpost$Alpha[[1]])
+    dev.off()
+    # plot summary 
+    sink(file.path(input,'results',"summary-alpha.txt"))
+    print(summary(mpost$Alpha[[1]]))
+    sink()
+    # plot eta 
+    
+    mpost$Eta[[1]]
+    postEta <- getPostEstimate(fitSepTF,parName='Eta')
+    
+    xycoords <- tryCatch(
+      {
+        # First attempt
+        data.frame(fitSepTF$ranLevels$site$s@coords[drop = FALSE])
+      },
+      error = function(e) {
+        # Fallback if the above errors
+        data.frame(fitSepTF$ranLevels$site$s)
+      }
+    )
+    
+    head(xycoords)
+    # rename X and Y consistentely 
+    col_with_max <- colnames(xycoords)[which.max(lapply(xycoords, max))]
+    names(xycoords)[names(xycoords) == col_with_max] <- "Y"  # Rename it to "Y"
+    col_with_min <- colnames(xycoords)[which.min(lapply(xycoords, min))]
+    names(xycoords)[names(xycoords) == col_with_min] <- "X"  # Rename it to "Y"
+    
+    # organize columns
+    xycoords <- xycoords[,c('X','Y')]
+    
+    pdf(file=file.path(input,'results','spatial-eta.pdf'),
+        width = 10,
+        height = 10)
+    for(i in 1:ncol(postEta$mean)){
+      print(i)
+      
+      eta <- postEta$mean[,i]
+      eta2 <- as.data.frame(cbind(eta,xycoords))
+      colnames(eta2) <- c('Eta','X','Y')
+      pal <- rev(brewer.pal(11,'RdBu'))
+      pal <- colorRampPalette(pal)
+      
+      # scale richness to the palette
+      ncolz <- 100
+      cols <- pal(ncolz)[as.numeric(cut(
+        eta2$Eta, 
+        breaks = seq(min(eta2$Eta), max(eta2$Eta), length.out = ncolz),
+        include.lowest = T
+      ))]
+      
+      colnames(eta2) <- c('Eta','X','Y')
+      p<- plot(eta2$X,eta2$Y,col = cols,pch = 19,
+               xlab = 'X',
+               ylab = 'Y',
+               main = paste0('Latent factor: ',i))
+      p
+      i <- image.plot(legend.only = TRUE,
+                      zlim = c(min(eta2$Eta),max(eta2$Eta)),      # force scale 0-12
+                      col = pal(ncolz),
+                      legend.lab = "Eta factor",
+                      horizontal = T)
+      i
+    }
+    dev.off()
+    
+    
+  }else{
+  }
+}
+}
 
+
+seq_along(5)
+
+
+# OTHER STUFF -------------------------------------------------------------
 
 # VP BY GUILD / STRATEGY  ------------------------------------------------------------
 print('starting VP guild/migration plots')
@@ -394,29 +493,29 @@ dev.new()
 #   )
 
 
-# TRACE PLOTS -------------------------------------------------------------
-if(between == 'mods-complexity-v1'){
-}else{
-par(mfrow=c(1,1))
-library(rethinking)
-
-mpost$Alpha[[1]]
-
-mpost<-convertToCodaObject(fitSepTF)
-summary(mpost)
 
 
-plot(mpost$Alpha[[1]])
-plot(mpost$Alpha[[2]])
+# OTHER STUFF  ------------------------------------------------------------
 
-plot(mpost$Alpha[[1]],auto.layout=F)
+between <- 'mods-complexity-v1'
+dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
+inaloop <- F
+for(dir in seq_along(dirs)){
+  if(grepl('oceanthresholds',dirs[dir])){
+    inaloop <- T
+    
 
-plot(mpost$Alpha[[1]][,1:4])
-
-traceplot(mpost$Alpha[[1]])
-plot(mpost$Beta[,1:10],auto.layout=F)
-dev.new()
-}
+# GETTING STARTED  --------------------------------------------------------
+    mod <- '2025-09-26_16-15-15_singleev_tmean_year'
+    between <- 'mods-complexity-v1'
+    input <- file.path('./tmp_rds',between,mod)
+    if(inaloop){
+      input <- dirs[dir]
+      print(input)
+    }
+    source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
+    m <- readRDS(file.path(input,'m_object.rds'))
+    print(nrow(m$X))
+    
   }
 }
-

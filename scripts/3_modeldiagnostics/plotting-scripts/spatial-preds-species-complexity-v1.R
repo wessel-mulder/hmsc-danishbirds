@@ -45,6 +45,8 @@ head(og_xy_species)
 # get richnes 
 xy_species <- merge(merge,preds,by='row.names')
 rownames(xy_species) <- xy_species$Row.names
+head(xy_species[,5:7])
+head(og_xy_species[,5:7])
 
 # PLOTTING ----------------------------------------------------------------
 # make a continuous color palette
@@ -74,7 +76,7 @@ abbreviate_genus <- function(x) {
 #zlim <- range(xyrich$rich, na.rm = TRUE)
 #zseq <- seq(zlim[1], zlim[2], length.out = ncolz)
 if(!dir.exists(file.path(input,'results','sp-preds-singlespecies'))) {dir.create(file.path(input,'results','sp-preds-singlespecies'))}
-
+specie <- species[1]
 for(specie in species){
   
 pdf(file=file.path(input,'results','sp-preds-singlespecies',paste0(specie,'.pdf')),
@@ -129,7 +131,11 @@ rownames(diff) <- rownames(xy_species)
 xydiff <- merge(merge,diff,by='row.names')
 head(xydiff)
 colnames(xydiff) <- c('row.names','site','X','Y','diff')
-diff_cols <- diffpal(ncolz)[as.numeric(cut(xydiff$diff, breaks = seq(min(xydiff$diff), max(xydiff$diff), length.out = ncolz)))]
+diff_cols <- diffpal(ncolz)[as.numeric(cut(
+  xydiff$diff, 
+  breaks = seq(-1, 1, length.out = ncolz),
+  include.lowest = T,
+  ))]
 
 plot(xydiff$X, xydiff$Y, col = diff_cols, pch = 19,
      xlab = 'X',
