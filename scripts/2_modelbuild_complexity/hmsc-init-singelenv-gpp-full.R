@@ -26,6 +26,8 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(corrplot)
   library(ape)
   library(dplyr)
+  library(sp)
+  library(terra)
   input <- '.'
   python <- file.path(getwd(), 'hmsc-hpc-main',"hmsc-venv", "bin", "python3.11")
   flagInit = 0
@@ -41,8 +43,10 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(Hmsc,lib="~/Rlibs")
   library(dplyr,lib="~/Rlibs")
   library(withr,lib="~/Rlibs")
+  library(sp,lib="~/Rlibs")
+  library(terra,lib="~/Rlibs")
   input <- '~/home/projects/hmsc-danishbirds'
-  python <- '~/opt/software/anaconda3/2021.05/bin/python'
+  python <- '/maps/projects/cmec/people/bhr597/projects/hmsc-danishbirds/hmsc-venv'
   flagInit = 1
   flagFitR = 0
 }
@@ -144,8 +148,7 @@ for(env in env_vars){
   struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "GPP",
                                  sKnot = knots_xycoords)
   }else if(spatial_p == 'Full'){
-  struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "Full",
-                                 sKnot = knots_xycoords)
+  struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "Full")
   }
   # set distances to min and max distances between sites 
   freq <- c(0.5,rep(0.005,100))
@@ -173,7 +176,7 @@ m <-Hmsc(Y = Y_warblers,
                          verbose = verbose,
                          engine="HPC")
   
-  dir_name <- paste0(date,'_singleev_',env,'_spatialmethod_','spatialp')
+  dir_name <- paste0(date,'_singleev_',env,'_spatialmethod_',spatial_p)
   print(dir_name)
   dir.create(file.path(input,'tmp_rds',dir_name))
   
@@ -207,6 +210,35 @@ m <-Hmsc(Y = Y_warblers,
                           "--verbose", verbose)
   cat(paste(shQuote(python), python_cmd_args), "\n")
   print('Init files created')
+  
+  # --- Auto-backup of the running script ----------------------------------------
+
+  # Try to detect the current script path
+  args <- commandArgs(trailingOnly = FALSE)
+  script_path <- NULL
+
+  if ("--file=" %in% substr(args, 1, 7)) {
+    # Works for Rscript or batch jobs
+    script_path <- normalizePath(sub("--file=", "", args[grep("--file=", args)]))
+  } else if (!is.null(sys.frames()) && !is.na(sys.frames()[[1]]$ofile)) {
+    # Fallback for interactive runs in RStudio
+    script_path <- normalizePath(sys.frames()[[1]]$ofile)
+  }
+
+  if (!is.null(script_path) && file.exists(script_path)) {
+    backup_file <- file.path(
+      file.path(input,'tmp_rds',dir_name),
+      paste0(format(Sys.time(), "%Y-%m-%d_%H-%M-%S_"), basename(script_path))
+    )
+
+    file.copy(script_path, backup_file, overwrite = TRUE)
+    message("✅ Script copied to: ", backup_file)
+  } else {
+    warning("⚠️ Could not determine script path — are you running interactively?")
+  }
+
+
   }
 }
+
 
