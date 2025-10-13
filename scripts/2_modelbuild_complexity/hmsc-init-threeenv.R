@@ -2,6 +2,7 @@ rm(list = ls())
 
 # Define MCMC settings
 env_vars <- c('tmean_year','prec_year','hh')
+characteristics <- c('migration','guild','taxonomy')
 
 nChains <- 4
 thin <- 10
@@ -26,6 +27,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(ape)
   library(dplyr)
   library(sp)
+  library(sf)
   library(terra)
   input <- '.'
   python <- file.path(getwd(), 'hmsc-hpc-main',"hmsc-venv", "bin", "python3.11")
@@ -44,6 +46,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(withr,lib="~/Rlibs")
   library(sp,lib="~/Rlibs")
   library(terra,lib="~/Rlibs")
+  library(sf,lib="~/Rlibs")
 
   input <- '~/home/projects/hmsc-danishbirds'
   python <- '/maps/projects/cmec/people/bhr597/projects/hmsc-danishbirds/hmsc-venv'
@@ -66,6 +69,12 @@ X <- na.omit(X)
 # keep only atlas 3
 atlas3 <- X[rownames(X)[grep("_3$", rownames(X))],,drop=F]
 
+# get ocean thresholds
+grids_thresholds <- st_read(file.path(input,'data/1_preprocessing/atlas-grids/grids-ocean-thresholds/grids_ocean_thresholds.shp'))
+thresholds <- grids_thresholds$kvdrtkd[grids_thresholds$pct_lnd>=25]
+
+atlas3 <- atlas3[sub("_[123]$", "", rownames(atlas3)) %in% thresholds,]
+
 # grab tmean_year
 sites_actual <- row.names(atlas3)
 
@@ -76,7 +85,7 @@ Y <- read.csv(file.path(input,'data/1_preprocessing/Y_occurrences/Y_occurrences.
 Y <- Y[row.names(Y) %in% sites_actual,]
 
 # grab 13 warblers
-genera <- c('Phylloscopus','Curruca','Sylvia','Acrocephalus','Hippolais')
+genera <- c('Phylloscopus','Curruca','Sylvia','Acrocephalus','Hippolais','Locustella')
 keep <- sapply(strsplit(colnames(Y),'_'),head,1) %in% genera
 Y_warblers <- Y[,keep]
 
@@ -86,9 +95,15 @@ colSums(Y_warblers, na.rm =T)
 Y_warblers <- Y_warblers[colnames(Y_warblers) != "Curruca_nisoria"]
 # phylloscopus also very absent in some of the thresholds now 
 #Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
-colSums(Y_warblers, na.rm =T)
+if(any(colSums(Y_warblers, na.rm =T)<5)){
+  stop('At least one species has less than 5 occurrences')
+}
 
 # fixed
+# --> LOAD TRAITS 
+Tr <- read.csv(file.path(input,"data/1_preprocessing/Tr_aits/traits-guild_migration.csv"),row.names = 2)[,c(2,3)]
+# sort by Y
+Tr <- Tr[colnames(Y), , drop = FALSE]
 
 # --> LOAD STUDY DESIGN 
 Design <- read.csv(file.path(input,"data/1_preprocessing/design/studyDesign.csv"),row.names=5)
@@ -120,29 +135,66 @@ head(proj_xycoords)
 # Define model types: 
   
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
+i <- 'guild'
+for(i in characteristics){
+  ### SAME ACROSS ALL MODELS
+  # Define model formulas for environmental and trait data
   
-### SAME ACROSS ALL MODELS
-# Define model formulas for environmental and trait data
-
-X <- atlas3[,env_vars,drop=F]
+  X <- atlas3[,env_vars,drop=F]
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
   
-struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "Full")
-               
-# set distances to min and max distances between sites 
-freq <- c(0.5,rep(0.005,100))
-samples <- c(0,seq(from = 4999, to = 477312, length.out = 100))
-small <- cbind(samples,freq)
+  struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "Full")
+  
+  # set distances to min and max distances between sites 
+  # freq <- c(0.5,rep(0.005,100))
+  # samples <- c(0,seq(from = 4999, to = 477312, length.out = 100))
+  # small <- cbind(samples,freq)
+  # 
+  # struc_space_small <- setPriors(struc_space,alphapw=small)
+  mig_guild <- list('migration' = 'Migration_a3_DOF',
+                   'guild' = 'foraging_guild_consensus')
+  if(i %in% c('migration','guild')){
+    
+    Tr_solo <- Tr[,mig_guild[[i]],drop=F]
+    Tr_solo <- Tr_solo[rownames(Tr_solo) %in% colnames(Y_warblers),,drop=F]
+    
+    Tr_solo
+    
+    TrFormula <- as.formula(paste("~", paste(colnames(Tr_solo), collapse = "+"), sep = " "))
+    
+    # init the model 
+    m <-Hmsc(Y = Y_warblers, 
+             XData = X,
+             XFormula = XFormula,
+             TrData = Tr_solo,
+             TrFormula = TrFormula,
+             studyDesign = Design3[,c('site'),drop=F], 
+             ranLevels = list('site'=struc_space),
+             distr='probit')
+  }else if(i %in% c('taxonomy')){
+    # phylogeny
+    phy <- read.tree(file.path(input,'data/1_preprocessing/Taxonomy/tree_fromPD.tre'))
+    phy_warblers <- keep.tip(phy,colnames(Y_warblers))
+    plot(phy_warblers)
 
-struc_space_small <- setPriors(struc_space,alphapw=small)
+    pd_matrix <- cophenetic.phylo(phy_warblers)
+    pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
+    pd_matrix
 
-m <-Hmsc(Y = Y_warblers, 
-       XData = X, 
-       XFormula = XFormula,
-       studyDesign = Design3[,c('site'),drop=F], 
-       ranLevels = list('site'=struc_space_small),
-       distr='probit')
-
+    # check if species-lists are identical
+    setdiff(rownames(pd_matrix),names(Y))
+    # stunning 
+    
+    # init the phylo model 
+    m <-Hmsc(Y = Y_warblers, 
+             XData = X,
+             XFormula = XFormula,
+             phyloTree = phy_warblers,
+             studyDesign = Design3[,c('site'),drop=F], 
+             ranLevels = list('site'=struc_space),
+             distr='probit')
+  }
+    
 ### IN RSTUDIO START SAMPLING 
 if(flagFitR){
   print('Rstudio stuff executed')
@@ -155,7 +207,7 @@ init_obj <- sampleMcmc(m, samples=nSamples, thin=thin,
                        verbose = verbose,
                        engine="HPC")
 
-dir_name <- paste0(date,'_threeenv_full_spatial')
+dir_name <- paste0(date,'_threeenv_',i)
 dir.create(file.path(input,'tmp_rds',dir_name))
 
 init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
@@ -168,7 +220,6 @@ writeLines(lines, file.path(input,'tmp_rds',dir_name, "params.txt"))
 saveRDS(to_json(init_obj), file=init_file_path)
 saveRDS(m,file=m_file_path)
 saveRDS(params,file=param_file_path)
-
 
 # operates in python, so formulate the required call 
 post_file_path = file.path(input,'tmp_rds',dir_name, "post_file.rds")
@@ -210,4 +261,4 @@ if (!is.null(script_path) && file.exists(script_path)) {
 }
 }
 
-
+}
