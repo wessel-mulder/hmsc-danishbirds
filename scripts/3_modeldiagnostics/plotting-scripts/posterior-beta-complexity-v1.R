@@ -98,12 +98,18 @@ covariates <- colnames(fitSepTF$XData)
 mar=c(1,20,1,1)
 mar=c(0,10,0,0)
 
-if(covariates == 'tmean_year'){
-  alt_name <- c('Yearly temp.')
-}else if(covariates == 'prec_year'){
-  alt_name <- c('Yearly prec.')
-}else if(covariates == 'hh'){
-  alt_name <- c('Heterogeneity')
+if(length(covariates) == 1){
+  if(covariates == 'tmean_year'){
+    alt_name <- c('Yearly temp.')
+  }else if(covariates == 'prec_year'){
+    alt_name <- c('Yearly prec.')
+  }else if(covariates == 'hh'){
+    alt_name <- c('Heterogeneity')
+  }
+}else if(length(covariates) == 3){
+  if(identical(covariates, c('tmean_year','prec_year','hh'))){
+    alt_name <- c('Yearly temp.','Yearly prec.','Heterogeneity')
+  }
 }
 
 pdf(file=file.path(input,'results','posterior-beta.pdf'),
