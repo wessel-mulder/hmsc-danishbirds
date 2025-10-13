@@ -1,21 +1,21 @@
 rm(list = ls())
 args <- commandArgs(trailingOnly = TRUE)
 
-between <- 'mods-complexity-v1'
+between <- 'mods-complexity-v2'
 dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
 inaloop <- F
 
-psrfess_flag <- 0
-fit_flag <- 0
-VP_flag <- 0
-pred_flag <- 0
+psrfess_flag <- 1
+fit_flag <- 1
+VP_flag <- 1
+pred_flag <- 1
 chains_flag <- 1
-post_estimates_flag <- 0
+post_estimates_flag <- 1
 
 #dirs <- dirs[11]
 for(dir in seq_along(dirs)){
   print(dir)
-# if(grepl('oceanthresholds',dirs[dir])){
+ if(grepl('full',dirs[dir])){
  #   print('T')
     inaloop <- T
 
@@ -103,10 +103,9 @@ print('model succesfully loaded')
 # LOADING DATA --------------------------------------------------------
 if(psrfess_flag == 1){
 print('starting psrf-ess plots')
-
 diags <- readRDS(file.path(input,'model-outputs','psrf-ess.rds'))
 
-if(between == 'mods-complexity-v1'){
+if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
   source(file.path(source_path,'psrf-ess-plots-complexity-v1.R'))
 }else{
   source(file.path(source_path,'psrf-ess-plots.R'))
@@ -118,7 +117,8 @@ if(between == 'mods-complexity-v1'){
 if(fit_flag == 1){
 print('starting fit-tjur plots')
 MF <- readRDS(file.path(input,'model-outputs','model-fit.rds'))
-if(between == 'mods-complexity-v1'){
+
+if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
   source(file.path(source_path,'auc-tjur-plots-complexity-v1.R'))
 }else{
   source(file.path(source_path,'auc-tjur-plots.R'))
@@ -129,7 +129,8 @@ if(between == 'mods-complexity-v1'){
 if(VP_flag == 1){
 print('starting VP plots')
 VP <- readRDS(file.path(input,'model-outputs','VP.rds'))
-if(between == 'mods-complexity-v1'){
+
+if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
   source(file.path(source_path,'VP-plots-complexity-v1.R'))
 }else{
 #VP_split <- readRDS(file.path(input,'model-outputs','VP-split.rds'))
@@ -140,24 +141,25 @@ source(file.path(source_path,'VP-plots.R'))
 
 # SPATIAL PREDICTIONS  ----------------------------------------------------
 if(pred_flag == 1){
-scale_bar_richness <- c(-4,4)
 print('starting spatial preds ')
 preds <- readRDS(file.path(input,'model-outputs','pred-vals.rds'))
 #print(head(preds))
-if(between == 'mods-complexity-v1'){
+if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
   source(file.path(source_path,'spatial-preds-complexity-v1.R'))
   source(file.path(source_path,'spatial-preds-species-complexity-v1.R'))
 }else{
 
 }
 }
+
 # POSTERIOR ESTIMATES  ----------------------------------------------------
 if(post_estimates_flag == 1){
 print('starting post estimates')
 postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
-if(between == 'mods-complexity-v1'){
+if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
   print('start omega')
   source(file.path(source_path,'posterior-omega-corrplot-complexity-v1.R'))
+  print('start beta')
   source(file.path(source_path,'posterior-beta-complexity-v1.R'))
   
 }else{
@@ -173,10 +175,25 @@ if(chains_flag == 1){
         height = 15)
     plot(mpost$Alpha[[1]])
     dev.off()
-    # plot summary 
-    sink(file.path(input,'results',"summary-alpha.txt"))
-    print(summary(mpost$Alpha[[1]]))
-    sink()
+    # plot summary of all params 
+    params <- list(beta = mpost$Beta,
+                   gamma = mpost$Gamma,
+                   V = mpost$V,
+                   sigma = mpost$Sigma,
+                   eta = mpost$Eta[[1]],
+                   alpha = mpost$Alpha[[1]],
+                   omega = mpost$Omega[[1]],
+                   lambda = mpost$Lambda[[1]],
+                   psi = mpost$Psi[[1]],
+                   delta = mpost$Delta[[1]])
+    if(!dir.exists(file.path(input,'results','summaries'))){dir.create(file.path(input,'results','summaries'))}
+    lapply(names(params),function(name){
+      sink(file.path(input,'results','summaries',paste0("summary-",name,".txt")))
+      print(summary(params[[name]]))
+      sink()
+    })
+    
+  
     # plot eta 
     
     mpost$Eta[[1]]
@@ -241,11 +258,13 @@ if(chains_flag == 1){
     
   }else{
   }
-}
+}else{
+  print('skipping chains ')
 }
 
-
-seq_along(5)
+ } # if statement (to find dirs)
+  
+} # dirs loop
 
 
 # OTHER STUFF -------------------------------------------------------------

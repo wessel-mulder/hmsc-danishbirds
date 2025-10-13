@@ -117,11 +117,16 @@ image.plot(legend.only = TRUE,
            horizontal = T)
 
 # DIFFERENCE 
+scale_bar_richness <- c(-2,2)
+# Cap values below/above limits
+vals <- pmax(pmin(xydiff$rich, scale_bar_richness[2]), scale_bar_richness[1])
+
 diff_cols <- pal(ncolz)[as.numeric(cut(
-  xydiff$rich, 
+  vals, 
   breaks = seq(scale_bar_richness[1], scale_bar_richness[2], length.out = ncolz),
   include.lowest=T
 ))]
+
 if (any(is.na(diff_cols))) {
   stop("Error: There are NA values in diff_cols. Edit the scale bar")
 }
@@ -133,8 +138,9 @@ image.plot(legend.only = TRUE,
            zlim = scale_bar_richness,      # force scale 
            col = pal(ncolz),
            legend.lab = "Difference",
+           axis.args = list(at = c(-2,-1,0,1,2),
+                            labels = c('< -2','-1','0','1','> 2')),
            horizontal = T)
-
 
 dev.off()
 print('spatial preds finished')

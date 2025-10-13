@@ -1,5 +1,5 @@
 # PLOTTING PARAMETERS 
-params <- list(mpost$Beta,mpost$Gamma,mpost$V,
+params <- list(mpost$Beta,mpost$Gamma,mpost$V,mpost$Sigma,
                mpost$Eta[[1]],
                mpost$Alpha[[1]],
                mpost$Omega[[1]],
@@ -12,6 +12,7 @@ params <- list(mpost$Beta,mpost$Gamma,mpost$V,
 full_names <- c("Species x Environment",
                 "Traits x Environment",
                 "Residual covariance (species niches)",
+                "Residual variance (species occurrences)",
                 'Site loadings 1',
                 'Scale of latent factors 1',
                 "Species associations 1",
@@ -20,7 +21,7 @@ full_names <- c("Species x Environment",
                 'Global shrinkage - species loadings 1')
 
 # plot colors 
-cols <- c('green4','purple4','orange4',
+cols <- c('green4','purple4','orange4','firebrick',
           'cornsilk3','ivory','blue4',
           'lightblue','cyan3','cyan4')
 
@@ -32,6 +33,7 @@ for(i in seq_along(full_names)){
   all_ess[[ full_names[i] ]]  <- as.numeric(diags$ess[[i]])
 }
 
+diags$psrf[[4]]
 
 # init pdf 
 pdf(file=file.path(input, "results", "PSRF_ESS_combined.pdf"), width=10, height=6)
@@ -51,7 +53,7 @@ all_psrf <- lapply(all_psrf, function(x) {
 })
 
 vioplot(all_psrf, col=cols, main="PSRF across parameters",
-        ylim=c(0.99, 11),
+        ylim=c(0.99, 5),
         xaxt = 'n',ann =  T)
 abline(h=1.1, lty=1, col="red") # warning threshold
 #axis(1, at=seq_along(all_psrf), labels=names(all_psrf), las=2, cex.axis=0.7)

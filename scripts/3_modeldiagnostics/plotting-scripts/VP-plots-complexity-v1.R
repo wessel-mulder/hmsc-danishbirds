@@ -38,16 +38,23 @@ par(mar = c(5,10,2,2))
 
 VP_2 <- VP
 
-# set plotting parameters 
-if(VP$groupnames == 'tmean_year'){
-  alt_name <- c('Yearly temp.')
-  colorway <- c('firebrick3','cornsilk2')
-}else if(VP$groupnames == 'prec_year'){
-  alt_name <- c('Yearly prec.')
-  colorway <- c('dodgerblue3','cornsilk2')
-}else if(VP$groupnames == 'hh'){
-  alt_name <- c('Heterogeneity')
-  colorway <- c('goldenrod2','cornsilk2')
+if(length(VP$groupnames)==1){
+  # set plotting parameters 
+  if(VP$groupnames == 'tmean_year'){
+    alt_name <- c('Yearly temp.')
+    colorway <- c('firebrick3','cornsilk2')
+  }else if(VP$groupnames == 'prec_year'){
+    alt_name <- c('Yearly prec.')
+    colorway <- c('dodgerblue3','cornsilk2')
+  }else if(VP$groupnames == 'hh'){
+    alt_name <- c('Heterogeneity')
+    colorway <- c('goldenrod2','cornsilk2')
+  }
+}else if(length(VP$groupnames)==3){
+  if(identical(VP$groupnames, c('tmean_year','prec_year','hh'))){
+    alt_name <- c('Yearly temp.','Yearly prec.','Heterogeneity')
+    colorway <- c('firebrick3','dodgerblue3','goldenrod2','cornsilk2')
+  }
 }
 
 VP_2$groupnames <- alt_name
