@@ -94,15 +94,15 @@ Y_warblers <- Y[,keep]
 
 # barred warbler is absent so we remove it 
 Y_warblers <- Y_warblers[colnames(Y_warblers) != "Curruca_nisoria"]
-Y_warblers <- Y_warblers[colnames(Y_warblers) != "Locustella_fluviatilis"]
-Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
+#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Locustella_fluviatilis"]
+#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
 
 # phylloscopus also very absent in some of the thresholds now 
 #Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
-for(atlasnr in c('1','2','3')){
-Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",atlasnr,"$"), rownames(Y_warblers))],,drop=F]
+for(number in atlasnr){
+Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",number,"$"), rownames(Y_warblers))],,drop=F]
 if(any(colSums(Y_warblers_sub, na.rm =T)<5)){
-  print(paste0('In atlas ',atlasnr,' these species: '))
+  print(paste0('In atlas ',number,' these species: '))
   print(names(which(colSums(Y_warblers_sub, na.rm =T)<5)))
   print('have less than 5 occurrences')
   stop('Stop')
