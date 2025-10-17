@@ -4,8 +4,7 @@ rm(list = ls())
 env_vars <- c('tmean_year','prec_year','hh')
 chars <- c('all')
 atlasnr <- c('3')
-spatial <- 'GPP'
-knotdists <- c(10,25,50,100,150,200) #km
+spatial <- 'Full'
 
 nChains <- 4
 thin <- 10
@@ -88,25 +87,37 @@ Y <- read.csv(file.path(input,'data/1_preprocessing/Y_occurrences/Y_occurrences.
 Y <- Y[row.names(Y) %in% sites_actual,]
 
 # grab 13 warblers
-genera <- c('Phylloscopus','Curruca','Sylvia','Acrocephalus','Hippolais','Locustella')
-keep <- sapply(strsplit(colnames(Y),'_'),head,1) %in% genera
-Y_warblers <- Y[,keep]
+#genera <- c('Phylloscopus','Curruca','Sylvia','Acrocephalus','Hippolais','Locustella')
+#keep <- sapply(strsplit(colnames(Y),'_'),head,1) %in% genera
+#Y_warblers <- Y[,keep]
 
 # barred warbler is absent so we remove it 
-Y_warblers <- Y_warblers[colnames(Y_warblers) != "Curruca_nisoria"]
-Y_warblers <- Y_warblers[colnames(Y_warblers) != "Locustella_fluviatilis"]
-Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
+#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Curruca_nisoria"]
+#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Locustella_fluviatilis"]
+#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
 
 # phylloscopus also very absent in some of the thresholds now 
 #Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
-for(atlasnr in c('1','2','3')){
-Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",atlasnr,"$"), rownames(Y_warblers))],,drop=F]
-if(any(colSums(Y_warblers_sub, na.rm =T)<5)){
-  print(paste0('In atlas ',atlasnr,' these species: '))
-  print(names(which(colSums(Y_warblers_sub, na.rm =T)<5)))
-  print('have less than 5 occurrences')
-  stop('Stop')
+for(number in atlasnr){
+  Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
+  if(any(colSums(Y_sub, na.rm =T)<5)){
+    print(paste0('In atlas ',number,' these species: '))
+    print(names(which(colSums(Y_sub, na.rm =T)<5)))
+    tofilter <- names(which(colSums(Y_sub, na.rm =T)<5))
+    print('have less than 5 occurrences')
+  }
 }
+
+Y <- Y[, !(colnames(Y) %in% tofilter)]
+for(number in atlasnr){
+  Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
+  if(any(colSums(Y_sub, na.rm =T)<5)){
+    print(paste0('In atlas ',number,' these species: '))
+    print(names(which(colSums(Y_sub, na.rm =T)<5)))
+    tofilter <- names(which(colSums(Y_sub, na.rm =T)<5))
+    print('have less than 5 occurrences')
+    stop('stop')
+  }
 }
 
 
@@ -114,7 +125,7 @@ if(any(colSums(Y_warblers_sub, na.rm =T)<5)){
 # --> LOAD TRAITS 
 Tr <- read.csv(file.path(input,"data/1_preprocessing/Tr_aits/traits-guild_migration.csv"),row.names = 2)[,c(2,3)]
 # sort by Y
-Tr_warblers <- Tr[colnames(Y_warblers), , drop = FALSE]
+Tr <- Tr[colnames(Y), , drop = FALSE]
 
 # --> LOAD STUDY DESIGN 
 Design <- read.csv(file.path(input,"data/1_preprocessing/design/studyDesign.csv"),row.names=5)
@@ -147,15 +158,14 @@ plot(Design$lat~Design$lon)
 # load phylo
 # phylogeny
 phy <- read.tree(file.path(input,'data/1_preprocessing/Taxonomy/tree_fromPD.tre'))
-phy_warblers <- keep.tip(phy,colnames(Y_warblers))
-plot(phy_warblers)
+phy <- keep.tip(phy,colnames(Y))
 
-pd_matrix <- cophenetic.phylo(phy_warblers)
+pd_matrix <- cophenetic.phylo(phy)
 pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
 pd_matrix
 
 # check if species-lists are identical
-setdiff(rownames(pd_matrix),names(Y_warblers))
+setdiff(rownames(pd_matrix),names(Y))
 # stunning 
 
 # PREPARING MODEL BUILD ---------------------------------------------------
@@ -163,36 +173,32 @@ setdiff(rownames(pd_matrix),names(Y_warblers))
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 # loop over different atlases 
 
-for(km in knotdists){
-  print(atlasnr)
+for(spatmethod in spatial){
+  print(spatmethod)
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
-  TrFormula <- as.formula(paste("~", paste(colnames(Tr_warblers), collapse = "+"), sep = " "))
+  TrFormula <- as.formula(paste("~", paste(colnames(Tr), collapse = "+"), sep = " "))
   
   # get random effects for space
   proj_xycoords_unique <- distinct(data.frame(X = Design$lon,
                                               Y = Design$lat))
   rownames(proj_xycoords_unique) <- unique(Design$site) 
-
-  distance <- km * 1000 #km to m
-  xyKnots = constructKnots(proj_xycoords,knotDist=distance)
-  struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "GPP",
-                                 sKnot = xyKnots)
+  struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "Full")
 
   # keep only atlas 1,2,3 
   if(atlasnr %in% c('1','2','3')){
-    Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",atlasnr,"$"), rownames(Y_warblers))],,drop=F]
+    Y_sub <- Y[rownames(Y)[grep(paste0("_",atlasnr,"$"), rownames(Y))],,drop=F]
     X_sub <- X[rownames(X)[grep(paste0("_",atlasnr,"$"), rownames(X))],,drop=F]
     Design_sub <- Design[rownames(Design)[grep(paste0("_",atlasnr,"$"), rownames(Design))],,drop=F]
     Design_sub <- Design_sub[,c('site'),drop=F]
     
-    m <-Hmsc(Y = Y_warblers_sub, 
+    m <-Hmsc(Y = Y_sub, 
              XData = X_sub,
              XFormula = XFormula,
-             TrData = Tr_warblers,
+             TrData = Tr,
              TrFormula = TrFormula,
-             phyloTree = phy_warblers,
+             phyloTree = phy,
              studyDesign = Design_sub[,c('site'),drop=F], 
              ranLevels = list('site'=struc_space),
              distr='probit')
@@ -211,7 +217,7 @@ init_obj <- sampleMcmc(m, samples=nSamples, thin=thin,
                        verbose = verbose,
                        engine="HPC")
 
-dir_name <- paste0(date,'_threeenv_knotdistance_',km,'km')
+dir_name <- paste0(date,'_threeenv_all_species_full')
 dir.create(file.path(input,'tmp_rds',dir_name))
 
 init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
