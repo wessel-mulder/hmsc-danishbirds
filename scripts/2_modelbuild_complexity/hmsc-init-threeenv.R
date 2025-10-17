@@ -162,6 +162,7 @@ atlasnr <- 1
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 # loop over different atlases 
 for(atlasnr in atlases){
+  print(atlasnr)
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
@@ -178,7 +179,6 @@ for(atlasnr in atlases){
   years_unique <- distinct(data.frame(Year = Design$year))
   rownames(years_unique) <- unique(Design$atlas) 
   struc_time <- HmscRandomLevel(sData = years_unique, sMethod = "Full")
-  
   # keep only atlas 1,2,3 
   if(atlasnr %in% c('1','2','3')){
     Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",atlasnr,"$"), rownames(Y_warblers))],,drop=F]
@@ -196,7 +196,7 @@ for(atlasnr in atlases){
              ranLevels = list('site'=struc_space),
              distr='probit')
     
-  }else if (atlas == 'full'){
+  }else if (atlasnr == 'full'){
     Y_warblers_sub <- Y_warblers
     X_sub <- X
     Design_sub <- Design
@@ -281,5 +281,5 @@ if (!is.null(script_path) && file.exists(script_path)) {
 }
 }
 
-} 
+}
 
