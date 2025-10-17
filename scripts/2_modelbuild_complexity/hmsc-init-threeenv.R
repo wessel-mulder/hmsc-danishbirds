@@ -3,7 +3,9 @@ rm(list = ls())
 # Define MCMC settings
 env_vars <- c('tmean_year','prec_year','hh')
 chars <- c('all')
-atlases <- c('1','2','3','all')
+atlasnr <- c('3')
+spatial <- 'GPP'
+knotdists <- c(10,25,50,100,150,200) #km
 
 nChains <- 4
 thin <- 10
@@ -158,10 +160,10 @@ setdiff(rownames(pd_matrix),names(Y_warblers))
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-atlasnr <- 1
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 # loop over different atlases 
-for(atlasnr in atlases){
+
+for(km in knotdists){
   print(atlasnr)
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
@@ -172,13 +174,12 @@ for(atlasnr in atlases){
   proj_xycoords_unique <- distinct(data.frame(X = Design$lon,
                                               Y = Design$lat))
   rownames(proj_xycoords_unique) <- unique(Design$site) 
-  head(proj_xycoords_unique)
-  head(Design)
-  struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "Full")
-  # and time
-  years_unique <- distinct(data.frame(Year = Design$year))
-  rownames(years_unique) <- unique(Design$atlas) 
-  struc_time <- HmscRandomLevel(sData = years_unique, sMethod = "Full")
+
+  distance <- km * 1000 #km to m
+  xyKnots = constructKnots(proj_xycoords,knotDist=distance)
+  struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "GPP",
+                                 sKnot = xyKnots)
+
   # keep only atlas 1,2,3 
   if(atlasnr %in% c('1','2','3')){
     Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",atlasnr,"$"), rownames(Y_warblers))],,drop=F]
@@ -195,25 +196,8 @@ for(atlasnr in atlases){
              studyDesign = Design_sub[,c('site'),drop=F], 
              ranLevels = list('site'=struc_space),
              distr='probit')
-    
-  }else if (atlasnr == 'full'){
-    Y_warblers_sub <- Y_warblers
-    X_sub <- X
-    Design_sub <- Design
-    Design_sub <- Design_sub[,c('site','atlas'),drop=F]
-    
-    m <-Hmsc(Y = Y_warblers_sub, 
-             XData = X_sub,
-             XFormula = XFormula,
-             TrData = Tr_warblers,
-             TrFormula = TrFormula,
-             phyloTree = phy_warblers,
-             studyDesign = Design_sub[,c('site','atlas'),drop=F], 
-             ranLevels = list('site'=struc_space,
-                              'atlas'=struc_time),
-             distr='probit')
-    
   }
+
 
 ### IN RSTUDIO START SAMPLING 
 if(flagFitR){
@@ -227,7 +211,7 @@ init_obj <- sampleMcmc(m, samples=nSamples, thin=thin,
                        verbose = verbose,
                        engine="HPC")
 
-dir_name <- paste0(date,'_threeenv_atlas_',atlasnr)
+dir_name <- paste0(date,'_threeenv_knotdistance_',km,'km')
 dir.create(file.path(input,'tmp_rds',dir_name))
 
 init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
@@ -235,6 +219,12 @@ m_file_path = file.path(input,'tmp_rds',dir_name, "m_object.rds")
 param_file_path = file.path(input,'tmp_rds',dir_name, "params.rds")
 lines <- paste(names(params), format(unlist(params), scientific = FALSE, trim=T), sep = "=")
 writeLines(lines, file.path(input,'tmp_rds',dir_name, "params.txt"))    
+
+# make pdf 
+pdf(file.path(input,'tmp_rds',dir_name,'knots.pdf'))
+plot(proj_xycoords,col='black',pch=19,cex=1)
+points(xyKnots,col = 'red',pch=19)
+dev.off()
 
 # save as json 
 saveRDS(to_json(init_obj), file=init_file_path)
