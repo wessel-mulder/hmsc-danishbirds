@@ -8,17 +8,36 @@ nspecies <- ncol(preds)
 species <- colnames(preds)
 
 # get design and xycoords of sites  
+# get design and xycoords of sites  
 design <- fitSepTF$studyDesign
-xycoords <- tryCatch(
-  {
-    # First attempt
-    data.frame(fitSepTF$ranLevels$site$s@coords[drop = FALSE])
-  },
-  error = function(e) {
-    # Fallback if the above errors
-    data.frame(fitSepTF$ranLevels$site$s)
-  }
-)
+if(is.null(design)){
+  # get design from a different model 
+  temp_fitsep <- readRDS('tmp_rds/mods-complexity-v2/2025-10-14_16-33-15_threeenv_full/fitsepTF.rds')
+  design <- temp_fitsep$studyDesign
+  
+  xycoords <- tryCatch(
+    {
+      # First attempt
+      data.frame(temp_fitsep$ranLevels$site$s@coords[drop = FALSE])
+    },
+    error = function(e) {
+      # Fallback if the above errors
+      data.frame(temp_fitsep$ranLevels$site$s)
+    }
+  )
+}else{
+  xycoords <- tryCatch(
+    {
+      # First attempt
+      data.frame(fitSepTF$ranLevels$site$s@coords[drop = FALSE])
+    },
+    error = function(e) {
+      # Fallback if the above errors
+      data.frame(fitSepTF$ranLevels$site$s)
+    }
+  )
+}
+
 
 head(xycoords)
 # rename X and Y consistentely 

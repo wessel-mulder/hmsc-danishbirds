@@ -31,7 +31,8 @@ plot(auc~occs,
      main = 'AUC ~ nr of occurrences',
      xlab = 'Occurrences',
      ylab = 'AUC',
-     xlim=c(0,2500))
+     xlim=c(0,2500),
+     ylim=c(0.5,1))
 # position, 1234 bltr
 join$postauc <- 2
 join$postauc[join$occs<1000] <- 4

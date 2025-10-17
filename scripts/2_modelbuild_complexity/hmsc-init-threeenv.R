@@ -2,9 +2,8 @@ rm(list = ls())
 
 # Define MCMC settings
 env_vars <- c('tmean_year','prec_year','hh')
-spatial_nonspatial <- c('Full')
 chars <- c('all')
-atlas <- c(1,2,3,'all')
+atlases <- c('1','2','3','all')
 
 nChains <- 4
 thin <- 10
@@ -65,20 +64,20 @@ summary(TD)
 X <- read.csv(file.path(input,'data/1_preprocessing/X_environmental/X_Environmental.csv'),row.names=1)
 X <- X[sort(row.names(X)),]
 
-# keep only sites with data  
-X <- na.omit(X)
-
-# keep only atlas 3
-atlas3 <- X[rownames(X)[grep("_3$", rownames(X))],,drop=F]
-
 # get ocean thresholds
 grids_thresholds <- st_read(file.path(input,'data/1_preprocessing/atlas-grids/grids-ocean-thresholds/grids_ocean_thresholds.shp'))
 thresholds <- grids_thresholds$kvdrtkd[grids_thresholds$pct_lnd>=25]
 
-atlas3 <- atlas3[sub("_[123]$", "", rownames(atlas3)) %in% thresholds,]
+X <- X[sub("_[123]$", "", rownames(X)) %in% thresholds,]
+# any NAs?
+table(is.na(X))
+X <- X[,env_vars,drop=F]
+table(is.na(X)) # still som NAs
+X <- na.omit(X)
+table(is.na(X)) # fixed
 
 # grab tmean_year
-sites_actual <- row.names(atlas3)
+sites_actual <- row.names(X)
 
 ### OCCURRENCES 
 Y <- read.csv(file.path(input,'data/1_preprocessing/Y_occurrences/Y_occurrences.csv'),row.names=1)
@@ -91,21 +90,29 @@ genera <- c('Phylloscopus','Curruca','Sylvia','Acrocephalus','Hippolais','Locust
 keep <- sapply(strsplit(colnames(Y),'_'),head,1) %in% genera
 Y_warblers <- Y[,keep]
 
-# check if they have enough records 
-colSums(Y_warblers, na.rm =T)
 # barred warbler is absent so we remove it 
 Y_warblers <- Y_warblers[colnames(Y_warblers) != "Curruca_nisoria"]
+Y_warblers <- Y_warblers[colnames(Y_warblers) != "Locustella_fluviatilis"]
+Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
+
 # phylloscopus also very absent in some of the thresholds now 
 #Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
-if(any(colSums(Y_warblers, na.rm =T)<5)){
-  stop('At least one species has less than 5 occurrences')
+for(atlasnr in c('1','2','3')){
+Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",atlasnr,"$"), rownames(Y_warblers))],,drop=F]
+if(any(colSums(Y_warblers_sub, na.rm =T)<5)){
+  print(paste0('In atlas ',atlasnr,' these species: '))
+  print(names(which(colSums(Y_warblers_sub, na.rm =T)<5)))
+  print('have less than 5 occurrences')
+  stop('Stop')
 }
+}
+
 
 # fixed
 # --> LOAD TRAITS 
 Tr <- read.csv(file.path(input,"data/1_preprocessing/Tr_aits/traits-guild_migration.csv"),row.names = 2)[,c(2,3)]
 # sort by Y
-Tr <- Tr[colnames(Y), , drop = FALSE]
+Tr_warblers <- Tr[colnames(Y_warblers), , drop = FALSE]
 
 # --> LOAD STUDY DESIGN 
 Design <- read.csv(file.path(input,"data/1_preprocessing/design/studyDesign.csv"),row.names=5)
@@ -115,61 +122,90 @@ Design <- Design[row.names(Design) %in% sites_actual,]
 
 # sort
 Design <- Design[sort(row.names(Design)), ]
-Design3 <- Design[rownames(Design)[grep("_3$", rownames(Design))],,drop=F]
-Design3 <- Design3[,c('site','lat','lon')]
-
-head(Design3)
 
 # convert to factors
-Design3$site <- as.factor(Design3$site)
+Design$site <- as.factor(Design$site)
+Design$atlas <- as.factor(Design$atlas)
+Design$year[Design$atlas == '1'] <- 1971
+Design$year[Design$atlas == '2'] <- 1992
+Design$year[Design$atlas == '3'] <- 2014
 
-xycoords <- data.frame(lon = Design3$lon, lat = Design3$lat)
-rownames(xycoords) <- Design3$site
+xycoords <- data.frame(lon = Design$lon, lat = Design$lat)
+#rownames(xycoords) <- Design3$site
 
 v <- vect(xycoords, geom = c("lon","lat"), crs = "EPSG:4326")
 v_proj <- project(v, "EPSG:23032")
 
 proj_xycoords <- crds(v_proj)
-rownames(proj_xycoords) <- rownames(xycoords)
-head(proj_xycoords)
-  
+Design$lon <- proj_xycoords[,1]
+Design$lat <- proj_xycoords[,2]
+# plot 
+plot(Design$lat~Design$lon)
+
+# load phylo
+# phylogeny
+phy <- read.tree(file.path(input,'data/1_preprocessing/Taxonomy/tree_fromPD.tre'))
+phy_warblers <- keep.tip(phy,colnames(Y_warblers))
+plot(phy_warblers)
+
+pd_matrix <- cophenetic.phylo(phy_warblers)
+pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
+pd_matrix
+
+# check if species-lists are identical
+setdiff(rownames(pd_matrix),names(Y_warblers))
+# stunning 
+
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-  
+atlasnr <- 1
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
-for(spatial in spatial_nonspatial){
+for(atlasnr in atlases){
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
-  
-  X <- atlas3[,env_vars,drop=F]
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
-    struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "Full")
-
   
-  if(spatial == 'full'){
+  proj_xycoords_unique <- distinct(data.frame(X = Design$lon,
+                                              Y = Design$lat))
+  rownames(proj_xycoords_unique) <- unique(Design$site) 
+  head(proj_xycoords_unique)
+  head(Design)
+  struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "Full")
+  # and time
+  years_unique <- distinct(data.frame(Year = Design$year))
+  rownames(years_unique) <- unique(Design$atlas) 
+  struc_time <- HmscRandomLevel(sData = years_unique, sMethod = "Full")
   
-    m <-Hmsc(Y = Y_warblers, 
-             XData = X,
+  # keep only atlas 3
+  if(atlasnr %in% c('1','2','3')){
+    Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",atlasnr,"$"), rownames(Y_warblers))],,drop=F]
+    X_sub <- X[rownames(X)[grep(paste0("_",atlasnr,"$"), rownames(X))],,drop=F]
+    Design_sub <- Design[rownames(Design)[grep(paste0("_",atlasnr,"$"), rownames(Design))],,drop=F]
+    Design_sub <- Design_sub[,c('site'),drop=F]
+    
+    m <-Hmsc(Y = Y_warblers_sub, 
+             XData = X_sub,
              XFormula = XFormula,
-             studyDesign = Design3[,c('site'),drop=F], 
+             studyDesign = Design_sub[,c('site'),drop=F], 
              ranLevels = list('site'=struc_space),
              distr='probit')
-  }else if(spatial == 'none'){
-        m <-Hmsc(Y = Y_warblers, 
-             XData = X,
+    
+  }else if (atlas == 'full'){
+    Y_warblers_sub <- Y_warblers
+    X_sub <- X
+    Design_sub <- Design
+    Design_sub <- Design_sub[,c('site','atlas'),drop=F]
+    
+    m <-Hmsc(Y = Y_warblers_sub, 
+             XData = X_sub,
              XFormula = XFormula,
+             studyDesign = Design_sub[,c('site','atlas'),drop=F], 
+             ranLevels = list('site'=struc_space,
+                              'atlas'=struc_time),
              distr='probit')
-
-  }else if(spatial == 'spatial'){
-            m <-Hmsc(Y = Y_warblers, 
-             XData = X,
-             XFormula = ~1,
-             studyDesign = Design3[,c('site'),drop=F], 
-             ranLevels = list('site'=struc_space),
-             distr='probit')
-             
+    
   }
-     
+
 ### IN RSTUDIO START SAMPLING 
 if(flagFitR){
   print('Rstudio stuff executed')
@@ -182,7 +218,7 @@ init_obj <- sampleMcmc(m, samples=nSamples, thin=thin,
                        verbose = verbose,
                        engine="HPC")
 
-dir_name <- paste0(date,'_threeenv_',spatial)
+dir_name <- paste0(date,'_threeenv_atlas_',atlasnr)
 dir.create(file.path(input,'tmp_rds',dir_name))
 
 init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
@@ -236,4 +272,5 @@ if (!is.null(script_path) && file.exists(script_path)) {
 }
 }
 
-}
+} 
+

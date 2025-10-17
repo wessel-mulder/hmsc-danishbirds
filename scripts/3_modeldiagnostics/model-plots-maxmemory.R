@@ -1,7 +1,7 @@
 rm(list = ls())
 args <- commandArgs(trailingOnly = TRUE)
 
-between <- 'mods-complexity-v2'
+between <- 'mods-complexity-v1'
 dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
 inaloop <- F
 
@@ -11,11 +11,13 @@ VP_flag <- 1
 pred_flag <- 1
 chains_flag <- 1
 post_estimates_flag <- 1
+taxonomy_flag <- 1
+spatial_flag <- 1
 
 #dirs <- dirs[11]
 for(dir in seq_along(dirs)){
   print(dir)
- if(grepl('full',dirs[dir])){
+ if(grepl('knots',dirs[dir])){
  #   print('T')
     inaloop <- T
 
@@ -100,6 +102,7 @@ fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 mpost <-convertToCodaObject(fitSepTF)
 print('model succesfully loaded')
 
+
 # LOADING DATA --------------------------------------------------------
 if(psrfess_flag == 1){
 print('starting psrf-ess plots')
@@ -155,13 +158,13 @@ if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
 # POSTERIOR ESTIMATES  ----------------------------------------------------
 if(post_estimates_flag == 1){
 print('starting post estimates')
-postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
 if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
   print('start omega')
   source(file.path(source_path,'posterior-omega-corrplot-complexity-v1.R'))
   print('start beta')
   source(file.path(source_path,'posterior-beta-complexity-v1.R'))
-  
+  print('start gamma')
+  source(file.path(source_path,'posterior-gamma-complexity-v1.R'))
 }else{
 
 }
@@ -186,6 +189,9 @@ if(chains_flag == 1){
                    lambda = mpost$Lambda[[1]],
                    psi = mpost$Psi[[1]],
                    delta = mpost$Delta[[1]])
+    if(taxonomy_flag == 1){
+      params$rho = mpost$Rho
+    }
     if(!dir.exists(file.path(input,'results','summaries'))){dir.create(file.path(input,'results','summaries'))}
     lapply(names(params),function(name){
       sink(file.path(input,'results','summaries',paste0("summary-",name,".txt")))
@@ -265,6 +271,7 @@ if(chains_flag == 1){
  } # if statement (to find dirs)
   
 } # dirs loop
+
 
 
 # OTHER STUFF -------------------------------------------------------------
