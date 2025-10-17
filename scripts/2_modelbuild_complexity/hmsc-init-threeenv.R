@@ -160,11 +160,14 @@ setdiff(rownames(pd_matrix),names(Y_warblers))
 # Define model types: 
 atlasnr <- 1
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
+# loop over different atlases 
 for(atlasnr in atlases){
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
+  TrFormula <- as.formula(paste("~", paste(colnames(Tr_warblers), collapse = "+"), sep = " "))
   
+  # get random effects for space
   proj_xycoords_unique <- distinct(data.frame(X = Design$lon,
                                               Y = Design$lat))
   rownames(proj_xycoords_unique) <- unique(Design$site) 
@@ -176,7 +179,7 @@ for(atlasnr in atlases){
   rownames(years_unique) <- unique(Design$atlas) 
   struc_time <- HmscRandomLevel(sData = years_unique, sMethod = "Full")
   
-  # keep only atlas 3
+  # keep only atlas 1,2,3 
   if(atlasnr %in% c('1','2','3')){
     Y_warblers_sub <- Y_warblers[rownames(Y_warblers)[grep(paste0("_",atlasnr,"$"), rownames(Y_warblers))],,drop=F]
     X_sub <- X[rownames(X)[grep(paste0("_",atlasnr,"$"), rownames(X))],,drop=F]
@@ -186,6 +189,9 @@ for(atlasnr in atlases){
     m <-Hmsc(Y = Y_warblers_sub, 
              XData = X_sub,
              XFormula = XFormula,
+             TrData = Tr_warblers,
+             TrFormula = TrFormula,
+             phyloTree = phy_warblers,
              studyDesign = Design_sub[,c('site'),drop=F], 
              ranLevels = list('site'=struc_space),
              distr='probit')
@@ -199,6 +205,9 @@ for(atlasnr in atlases){
     m <-Hmsc(Y = Y_warblers_sub, 
              XData = X_sub,
              XFormula = XFormula,
+             TrData = Tr_warblers,
+             TrFormula = TrFormula,
+             phyloTree = phy_warblers,
              studyDesign = Design_sub[,c('site','atlas'),drop=F], 
              ranLevels = list('site'=struc_space,
                               'atlas'=struc_time),
