@@ -2,7 +2,9 @@ rm(list = ls())
 
 # Define MCMC settings
 env_vars <- c('tmean_year','prec_year','hh')
-characteristics <- c('migration','guild','taxonomy')
+spatial_nonspatial <- c('Full')
+chars <- c('all')
+atlas <- c(1,2,3,'all')
 
 nChains <- 4
 thin <- 10
@@ -135,66 +137,39 @@ head(proj_xycoords)
 # Define model types: 
   
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
-i <- 'guild'
-for(i in characteristics){
+for(spatial in spatial_nonspatial){
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
   
   X <- atlas3[,env_vars,drop=F]
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
+    struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "Full")
+
   
-  struc_space <- HmscRandomLevel(sData = proj_xycoords, sMethod = "Full")
+  if(spatial == 'full'){
   
-  # set distances to min and max distances between sites 
-  # freq <- c(0.5,rep(0.005,100))
-  # samples <- c(0,seq(from = 4999, to = 477312, length.out = 100))
-  # small <- cbind(samples,freq)
-  # 
-  # struc_space_small <- setPriors(struc_space,alphapw=small)
-  mig_guild <- list('migration' = 'Migration_a3_DOF',
-                   'guild' = 'foraging_guild_consensus')
-  if(i %in% c('migration','guild')){
-    
-    Tr_solo <- Tr[,mig_guild[[i]],drop=F]
-    Tr_solo <- Tr_solo[rownames(Tr_solo) %in% colnames(Y_warblers),,drop=F]
-    
-    Tr_solo
-    
-    TrFormula <- as.formula(paste("~", paste(colnames(Tr_solo), collapse = "+"), sep = " "))
-    
-    # init the model 
     m <-Hmsc(Y = Y_warblers, 
              XData = X,
              XFormula = XFormula,
-             TrData = Tr_solo,
-             TrFormula = TrFormula,
              studyDesign = Design3[,c('site'),drop=F], 
              ranLevels = list('site'=struc_space),
              distr='probit')
-  }else if(i %in% c('taxonomy')){
-    # phylogeny
-    phy <- read.tree(file.path(input,'data/1_preprocessing/Taxonomy/tree_fromPD.tre'))
-    phy_warblers <- keep.tip(phy,colnames(Y_warblers))
-    plot(phy_warblers)
-
-    pd_matrix <- cophenetic.phylo(phy_warblers)
-    pd_matrix <- pd_matrix[sort(rownames(pd_matrix)), sort(colnames(pd_matrix))]
-    pd_matrix
-
-    # check if species-lists are identical
-    setdiff(rownames(pd_matrix),names(Y))
-    # stunning 
-    
-    # init the phylo model 
-    m <-Hmsc(Y = Y_warblers, 
+  }else if(spatial == 'none'){
+        m <-Hmsc(Y = Y_warblers, 
              XData = X,
              XFormula = XFormula,
-             phyloTree = phy_warblers,
+             distr='probit')
+
+  }else if(spatial == 'spatial'){
+            m <-Hmsc(Y = Y_warblers, 
+             XData = X,
+             XFormula = ~1,
              studyDesign = Design3[,c('site'),drop=F], 
              ranLevels = list('site'=struc_space),
              distr='probit')
+             
   }
-    
+     
 ### IN RSTUDIO START SAMPLING 
 if(flagFitR){
   print('Rstudio stuff executed')
@@ -207,7 +182,7 @@ init_obj <- sampleMcmc(m, samples=nSamples, thin=thin,
                        verbose = verbose,
                        engine="HPC")
 
-dir_name <- paste0(date,'_threeenv_',i)
+dir_name <- paste0(date,'_threeenv_',spatial)
 dir.create(file.path(input,'tmp_rds',dir_name))
 
 init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")

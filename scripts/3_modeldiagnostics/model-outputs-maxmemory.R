@@ -10,6 +10,8 @@ VP_flag <- args[5]
 pred_flag <- args[6]
 sp_pred_flag <- args[7]
 post_estimates_flag <- args[8]
+taxonomy_flag <- args[9]
+spatial_flag <- args[10]
 
 
 # GETTING STARTED ---------------------------------------------------------
@@ -105,49 +107,51 @@ summary(mpost)
  #              mpost$Lambda[[1]],mpost$Lambda[[2]],
  #              mpost$Psi[[1]],mpost$Psi[[2]],
  #              mpost$Delta[[1]],mpost$Delta[[2]])
-params <- list(mpost$Beta,mpost$Gamma,mpost$V,mpost$Sigma,
-               mpost$Eta[[1]],
-               mpost$Alpha[[1]],
-               mpost$Omega[[1]],
-               mpost$Lambda[[1]],
-               mpost$Psi[[1]],
-               mpost$Delta[[1]])
+params <- list(
+  beta = mpost$Beta,
+  gamma = mpost$Gamma,
+  V = mpost$V,
+  sigma = mpost$Sigma
+)
+  if(spatial_flag == 1){
+    params$eta <- mpost$Eta[[1]]
+    params$alpha = mpost$Alpha[[1]]
+    params$omega = mpost$Omega[[1]]
+    params$lambda = mpost$Lambda[[1]]
+    params$psi = mpost$Psi[[1]]
+    params$delta = mpost$Delta[[1]]
+  }
+ if(taxonomy_flag == 1){
+  params$Rho <- mpost$Rho
+ }
 
 diags <- list(psrf = list(), ess = list())
 chunk_size <- 10
 
-for(j in seq_along(params)){
-  print(j)
-  mat <- params[[j]]
-  ncols <- ncol(mat[[1]]) # get ncol 
-  print(ncols)
-
-  # process in chunks if ncols > 1
-  if(length(ncols)){
+for (name in names(params)) {
+  cat("Processing:", name, "\n")
+  mat <- params[[name]]
+  
+  # Handle objects with and without columns
+  ncols <- tryCatch(ncol(mat[[1]]), error = function(e) NULL)
+  
+  if (length(ncols) && !is.null(ncols)) {
     idx_chunks <- split(1:ncols, ceiling(seq_along(1:ncols)/chunk_size))
     
-    psrf_list <- list()
-    ess_list  <- list()
-    
-    # parallelize
     results <- parallel::mclapply(idx_chunks, function(cols) {
       list(
-        psrf = gelman.diag(mat[,cols], multivariate=FALSE,autoburnin=F)$psrf[,1],
-        ess  = effectiveSize(mat[,cols])
+        psrf = gelman.diag(mat[, cols], multivariate = FALSE, autoburnin = FALSE)$psrf[, 1],
+        ess  = effectiveSize(mat[, cols])
       )
-    }, mc.cores = n_cores)  # adjust cores to liking
+    }, mc.cores = n_cores)
     
-    # Combine
-    psrf_list <- lapply(results, `[[`, "psrf")
-    ess_list  <- lapply(results, `[[`, "ess")
+    diags$psrf[[name]] <- unlist(lapply(results, `[[`, "psrf"))
+    diags$ess[[name]]  <- unlist(lapply(results, `[[`, "ess"))
     
-    diags$psrf[[j]] <- unlist(psrf_list)
-    diags$ess[[j]]  <- unlist(ess_list)
-  }else{
-    diags$psrf[[j]] <- gelman.diag(mat, multivariate=FALSE,autoburnin=F)$psrf[,1]
-    diags$ess[[j]] <- effectiveSize(mat)
+  } else {
+    diags$psrf[[name]] <- gelman.diag(mat, multivariate = FALSE, autoburnin = FALSE)$psrf[, 1]
+    diags$ess[[name]]  <- effectiveSize(mat)
   }
-  
 }
 
 # init pdf 
@@ -237,10 +241,14 @@ print('variance partitions succesfully saved')
 
 if(post_estimates_flag==1){
   print('starting posteriors')
-
-  for(parameter in c('Beta','Omega','OmegaCor')){
+  if(spatial_flag == 1){
+    param_list <- c("Beta", "Gamma", "V", "rho", "sigma","wRRR","Eta", "Lambda", "Psi", "Delta","Alpha","Omega","OmegaCor")
+  }
+  param_list <- 
+  for(parameter in c("Beta", "Gamma", "V", "rho", "sigma","wRRR","Eta", "Lambda", "Psi", "Delta","Alpha","Omega","OmegaCor")){
   posterior = getPostEstimate(fitSepTF, parName = parameter)
-  saveRDS(posterior,file=file.path(input,'model-outputs',paste0('posterior-',parameter,'.rds')))
+  if(!dir.exists(file.path(input,'model-outputs','posterior-estimates'))) {dir.create(file.path(input,'model-outputs','posterior-estimates'))}
+  saveRDS(posterior,file=file.path(input,'model-outputs','posterior-estimates',paste0('posterior-',parameter,'.rds')))
   }
   print('posteriors finished')
 }else{
