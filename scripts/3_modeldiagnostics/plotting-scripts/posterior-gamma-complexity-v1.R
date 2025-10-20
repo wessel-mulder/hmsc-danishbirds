@@ -4,12 +4,12 @@ m <- fitSepTF
 if(!is.null(fitSepTF$TrData)){
 parName = 'Gamma'
 plotType = 'Sign'
-characteristic = 'Guild'
+characteristic = c('Guild','Migratory')
 newEnvNames <- c('Yearly temp.','Yearly prec.','Heterogeneity')
 
 plotGammaSign <- function(m,
                              parName = c("Beta", "Gamma", "Omega"),
-                          characteristic = c('Guild','Migratory'),
+                              characteristic = c('Guild','Migratory'),
                              plotType = c("Sign", "Mean"),
                              returnPlot = TRUE,
                              supportLevel = 0.95,
@@ -55,8 +55,22 @@ plotGammaSign <- function(m,
       colnames[1] <- paste0('Intercept - ',intercept)
     }
       
+    }else if(length(categories)==2){
     }
-    
+    #   print('test')
+    #   for(cat in categories){
+    #     uniques_in_cat <- unique(m$TrData[[cat]])
+    #     
+    #     # Keep gsub ugly name out
+    #     colnames <- gsub(cat,"",colnames)
+    #     
+    #     # find the intercept
+    #     intercept <- setdiff(uniques_in_cat,colnames)
+    #     
+    #     colnames[1] <- paste0('Intercept - ',intercept)
+    #   }
+    # }
+    # 
     # Remove intercept and set row and column names just before plotting
     if (!is.null(newEnvNames)) {
       rowNames <- newEnvNames  # Use provided new names
@@ -131,11 +145,16 @@ if(length(covariates) == 1){
   }
 }
 
-if(colnames(fitSepTF$TrData) == 'foraging_guild_consensus'){
-  alt_char <- 'Guild'
-}else if(colnames(fitSepTF$TrData) == 'Migration_a3_DOF'){
-  alt_char <- 'Migratory strategy'
+if(length(colnames(fitSepTF$TrData))==1){
+  if(colnames(fitSepTF$TrData) == 'foraging_guild_consensus'){
+    alt_char <- 'Guild'
+  }else if(colnames(fitSepTF$TrData) == 'Migration_a3_DOF'){
+    alt_char <- 'Migratory strategy'
+  }
+}else if (length(colnames(fitSepTF$TrData))==2){
+  alt_char <- c('Migratory strategy','Guild')
 }
+  
 
 pdf(file=file.path(input,'results','posterior-gamma.pdf'),
     width = 6,

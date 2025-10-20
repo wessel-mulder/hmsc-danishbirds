@@ -106,7 +106,7 @@ abline(h=1.1, lty=1, col="red")
 legend('topleft', fill=cols, legend=names_for_plot, cex=0.8)
 
 # Zoomed PSRF plot (<=1.1)
-vioplot(all_psrf, col=cols, main="PSRF (zoomed, ≤1.1)",
+vioplot(all_psrf, col=cols, main="PSRF across parameters (zoomed)",
         ylim=c(0.99, 1.1), xaxt='n', ann=TRUE)
 abline(h=1.1, lty=1, col="red")
 

@@ -1,7 +1,7 @@
 rm(list = ls())
 args <- commandArgs(trailingOnly = TRUE)
 
-between <- 'mods-complexity-v1'
+between <- 'mods-complexity-v2'
 dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
 inaloop <- F
 
@@ -17,7 +17,8 @@ spatial_flag <- 1
 #dirs <- dirs[11]
 for(dir in seq_along(dirs)){
   print(dir)
- if(grepl('knots',dirs[dir])){
+ if(grepl('atlas',dirs[dir])){
+
  #   print('T')
     inaloop <- T
 
@@ -42,6 +43,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   between <- 'mods-complexity-v1'
   input <- file.path('./tmp_rds',between,mod)
   if(inaloop){
+    dir <- 4
   input <- dirs[dir]
   print(input)
   }
