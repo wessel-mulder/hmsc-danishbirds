@@ -244,8 +244,7 @@ if(post_estimates_flag==1){
   if(spatial_flag == 1){
     param_list <- c("Beta", "Gamma", "V", "rho", "sigma","wRRR","Eta", "Lambda", "Psi", "Delta","Alpha","Omega","OmegaCor")
   }
-  param_list <- 
-  for(parameter in c("Beta", "Gamma", "V", "rho", "sigma","wRRR","Eta", "Lambda", "Psi", "Delta","Alpha","Omega","OmegaCor")){
+  for(parameter in param_list){
   posterior = getPostEstimate(fitSepTF, parName = parameter)
   if(!dir.exists(file.path(input,'model-outputs','posterior-estimates'))) {dir.create(file.path(input,'model-outputs','posterior-estimates'))}
   saveRDS(posterior,file=file.path(input,'model-outputs','posterior-estimates',paste0('posterior-',parameter,'.rds')))

@@ -226,12 +226,6 @@ param_file_path = file.path(input,'tmp_rds',dir_name, "params.rds")
 lines <- paste(names(params), format(unlist(params), scientific = FALSE, trim=T), sep = "=")
 writeLines(lines, file.path(input,'tmp_rds',dir_name, "params.txt"))    
 
-# make pdf 
-pdf(file.path(input,'tmp_rds',dir_name,'knots.pdf'))
-plot(proj_xycoords,col='black',pch=19,cex=1)
-points(xyKnots,col = 'red',pch=19)
-dev.off()
-
 # save as json 
 saveRDS(to_json(init_obj), file=init_file_path)
 saveRDS(m,file=m_file_path)
