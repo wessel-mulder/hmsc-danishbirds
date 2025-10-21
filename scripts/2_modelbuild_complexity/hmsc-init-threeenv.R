@@ -3,7 +3,7 @@ rm(list = ls())
 # Define MCMC settings
 env_vars <- c('tmean_year','prec_year','hh')
 chars <- c('all')
-atlases <- c('1','2','3','all')
+atlases <- c('all')
 
 nChains <- 4
 thin <- 10
