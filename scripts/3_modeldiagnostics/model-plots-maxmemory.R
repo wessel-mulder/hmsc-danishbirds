@@ -11,13 +11,11 @@ VP_flag <- 1
 pred_flag <- 1
 chains_flag <- 1
 post_estimates_flag <- 1
-taxonomy_flag <- 1
-spatial_flag <- 1
 
 #dirs <- dirs[11]
 for(dir in seq_along(dirs)){
   print(dir)
- if(grepl('atlas',dirs[dir])){
+ if(grepl('all_species',dirs[dir])){
 
  #   print('T')
     inaloop <- T
@@ -37,13 +35,9 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(RColorBrewer)
   library(reshape2)
   library(ggplot2)
+  library(vioplot)
   
-
-  mod <- '2025-09-26_16-15-15_singleev_tmean_year'
-  between <- 'mods-complexity-v1'
-  input <- file.path('./tmp_rds',between,mod)
   if(inaloop){
-    dir <- 4
   input <- dirs[dir]
   print(input)
   }
@@ -103,6 +97,13 @@ filteredList <- chainList
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 mpost <-convertToCodaObject(fitSepTF)
 print('model succesfully loaded')
+
+# get flags 
+if(!is.null(fitSepTF$phyloTree)){taxonomy_flag <- 1}else{taxonomy_flag<-0}
+if(!is.null(fitSepTF$rL$site$s)){spatial_flag <- 1}else{spatial_flag<-0}
+if(!is.null(fitSepTF$rL$year)){temporal_flag <- 1}else{temporal_flag<-0}
+if(fitSepTF$ns>30){all_species <- 1}else{all_species <- 0}
+if(nrow(fitSepTF$XData)>5000){all_atlas <- 1}else{all_atlas <- 0}
 
 
 # LOADING DATA --------------------------------------------------------
@@ -173,7 +174,7 @@ if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
 }
 # CHAINS ------------------------------------------------------------------
 if(chains_flag == 1){
-  if(between == 'mods-complexity-v1'){
+  if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
     # plot traceplots 
     pdf(file=file.path(input,'results','traceplots-alpha.pdf'),
         width = 10,
@@ -276,274 +277,274 @@ if(chains_flag == 1){
 
 
 
-# OTHER STUFF -------------------------------------------------------------
-
-# VP BY GUILD / STRATEGY  ------------------------------------------------------------
-print('starting VP guild/migration plots')
-if(between == 'mods-complexity-v1'){
-}else{
-  source(file.path(source_path,'VP-guild-plots.R'))
-  source(file.path(source_path,'VP-migration-plots.R'))
-}
-
-
-# VP SORTED BY CLASSES  ---------------------------------------------------------------
-if(between == 'mods-complexity-v1'){
-}else{
-# get number of species occurrences
-# sorted by classes 
-print('starting VP other plots')
-
-rs <- rownames(VP_split$vals)
-for(i in rs){
-focal_species <- names(sort(VP_split$vals[i,],decreasing=T)[1:10])
-indices <-  which(colnames(VP_split$vals)%in%focal_species)
-VP_guild <- VP_split
-VP_guild$vals <- VP_split$vals[,indices]
-main <- paste0('Variance Partitioning - ',i,' - Grouped by category')
-Hmsc::plotVariancePartitioning(m,VP_guild,
-                               cols = c('firebrick3',
-                                        'dodgerblue3',
-                                        'goldenrod2',
-                                        'springgreen4',
-                                        'cornsilk2',
-                                        'cornsilk3'),
-                               main = main,
-                               las = 2,
-                               border = NA,
-                               space=0,
-                               axisnames=T,
-                               ann=T,
-                               args.legend = list(x = 'topright',
-                                                  inset=c(-0.25,0)))
-}
-# most important vars 
-
-print('starting VP omosti mportant VAR plots')
-
-pdf(file=file.path(input,'results','VP_mostimportantvars.pdf'),
-    width = 14,
-    height = 6)
-
-par(mar = c(15,5,5,15))
-
-# TEMPERATURE SPECIES 
-info <- apply(VP_split$vals,2,which.max)
-table(info)
-
-focal_species <- names(info[info==1])
-indices <-  which(colnames(VP_split$vals)%in%focal_species)
-VP_guild <- VP_split
-VP_guild$vals <- VP_split$vals[,indices]
-main <- paste0('Variance Partitioning - ','Temperature most important',' - Grouped by category')
-Hmsc::plotVariancePartitioning(m,VP_guild,
-                               cols = c('firebrick3',
-                                        'dodgerblue3',
-                                        'goldenrod2',
-                                        'springgreen4',
-                                        'cornsilk2',
-                                        'cornsilk3'),
-                               main = main,
-                               las = 2,
-                               border = NA,
-                               space=0,
-                               axisnames=T,
-                               ann=T,
-                               args.legend = list(x = 'topright',
-                                                  inset=c(-0.25,0)))
-
-print('temp succesfull')
-# WINTER SPECIES 
-info <- apply(VP_season$vals,2,which.max)
-table(info)
-
-focal_species <- names(info[info==2])
-indices <-  which(colnames(VP_season$vals)%in%focal_species)
-VP_guild <- VP_season
-VP_guild$vals <- VP_season$vals[,indices]
-main <- paste0('Variance Partitioning - ','Winter most important',' - Grouped by season')
-Hmsc::plotVariancePartitioning(m,VP_guild,
-                               cols = c('coral',
-                                        'lightblue',
-                                        'lightgreen',
-                                        'goldenrod2',
-                                        'springgreen4',
-                                        'cornsilk2',
-                                        'cornsilk3'),
-                               main = main,
-                               las = 2,
-                               border = NA,
-                               space=0,
-                               axisnames=T,
-                               ann=T,
-                               args.legend = list(x = 'topright',
-                                                  inset=c(-0.25,0)))
-
-print('winter succesfull')
-
-# YEARLY TEMPERATURE MOST IMPORTANT
-info <- apply(VP$vals,2,which.max)
-table(info)
-
-focal_species <- names(info[info==1])
-indices <-  which(colnames(VP$vals)%in%focal_species)
-VP_guild <- VP
-VP_guild$vals <- VP$vals[,indices]
-main <- paste0('Variance Partitioning - ','Yearly temperature most important')
-Hmsc::plotVariancePartitioning(m,VP_guild,
-                               cols = c('firebrick3',
-                                        'firebrick2',
-                                        'firebrick1',
-                                        'dodgerblue3',
-                                        'dodgerblue2',
-                                        'dodgerblue1',
-                                        'goldenrod2',
-                                        'goldenrod1',
-                                        colorRampPalette(c("springgreen4", "springgreen1"))(8),
-                                        'cornsilk2',
-                                        'cornsilk3'),
-                               main = main,
-                               las = 2,
-                               border = NA,
-                               space=0,
-                               axisnames=T,
-                               ann=T,
-                               args.legend = list(x = 'topright',
-                                                  inset=c(-0.25,0)))
-
-print('yearly succesfull')
-
-
-
-dev.off()
-
-
-dev.new()
-}
-
-# PARAMETER ESTIMATES -----------------------------------------------------
-# plot.new()
-# postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
-# plotBeta(m,post = postBeta,
-#          param = "Sign", supportLevel = 0.95)
-# postGamma <- readRDS(file.path(input,'model-outputs','posterior-Gamma.rds'))
-# plotGamma(m,post = postGamma,
-#          param = "Mean", supportLevel = 0.95)
+# # OTHER STUFF -------------------------------------------------------------
 # 
-# getPostEstimate(fitSepTF)
-# 
-# postAlpha <- getPostEstimate(fitSepTF,parName='Alpha',r=2)
-# mpost<-convertToCodaObject(fitSepTF)
-# 
-# # spatial structure
-# summary(mpost$Alpha[[1]])[2]$quantiles[1,]
-# # temporal structure
-# summary(mpost$Alpha[[2]])[2]$quantiles[1,]
-# 
-# summary(mpost$Alpha[[2]])
-# 
-# fitSepTF
-# 
-# postEta <- getPostEstimate(fitSepTF,parName='Eta')
-# summary(postEta$support)
-# 
-# 
-# i <- 1
-# for(i in 1:ncol(postEta$mean)){
-#   eta <- postEta$mean[,i]
-#   eta2 <- cbind(eta,xy)
-#   p<-ggplot(eta2,aes(x=lon,y=lat,col=eta))+
-#     geom_point(cex=3)+
-#     labs(title=i)+
-#     scale_colour_gradient2(
-#       low = "blue",      # color for negative values
-#       mid = "ivory",     # color for zero
-#       high = "red",      # color for positive values
-#       midpoint = 0
-#     )
-#   print(p)
+# # VP BY GUILD / STRATEGY  ------------------------------------------------------------
+# print('starting VP guild/migration plots')
+# if(between == 'mods-complexity-v1'){
+# }else{
+#   source(file.path(source_path,'VP-guild-plots.R'))
+#   source(file.path(source_path,'VP-migration-plots.R'))
 # }
 # 
-# xy <- fitSepTF$rL[[1]]$s
 # 
-# summary(mpost$Alpha[[1]])[2]
+# # VP SORTED BY CLASSES  ---------------------------------------------------------------
+# if(between == 'mods-complexity-v1'){
+# }else{
+# # get number of species occurrences
+# # sorted by classes 
+# print('starting VP other plots')
+# 
+# rs <- rownames(VP_split$vals)
+# for(i in rs){
+# focal_species <- names(sort(VP_split$vals[i,],decreasing=T)[1:10])
+# indices <-  which(colnames(VP_split$vals)%in%focal_species)
+# VP_guild <- VP_split
+# VP_guild$vals <- VP_split$vals[,indices]
+# main <- paste0('Variance Partitioning - ',i,' - Grouped by category')
+# Hmsc::plotVariancePartitioning(m,VP_guild,
+#                                cols = c('firebrick3',
+#                                         'dodgerblue3',
+#                                         'goldenrod2',
+#                                         'springgreen4',
+#                                         'cornsilk2',
+#                                         'cornsilk3'),
+#                                main = main,
+#                                las = 2,
+#                                border = NA,
+#                                space=0,
+#                                axisnames=T,
+#                                ann=T,
+#                                args.legend = list(x = 'topright',
+#                                                   inset=c(-0.25,0)))
+# }
+# # most important vars 
+# 
+# print('starting VP omosti mportant VAR plots')
+# 
+# pdf(file=file.path(input,'results','VP_mostimportantvars.pdf'),
+#     width = 14,
+#     height = 6)
+# 
+# par(mar = c(15,5,5,15))
+# 
+# # TEMPERATURE SPECIES 
+# info <- apply(VP_split$vals,2,which.max)
+# table(info)
+# 
+# focal_species <- names(info[info==1])
+# indices <-  which(colnames(VP_split$vals)%in%focal_species)
+# VP_guild <- VP_split
+# VP_guild$vals <- VP_split$vals[,indices]
+# main <- paste0('Variance Partitioning - ','Temperature most important',' - Grouped by category')
+# Hmsc::plotVariancePartitioning(m,VP_guild,
+#                                cols = c('firebrick3',
+#                                         'dodgerblue3',
+#                                         'goldenrod2',
+#                                         'springgreen4',
+#                                         'cornsilk2',
+#                                         'cornsilk3'),
+#                                main = main,
+#                                las = 2,
+#                                border = NA,
+#                                space=0,
+#                                axisnames=T,
+#                                ann=T,
+#                                args.legend = list(x = 'topright',
+#                                                   inset=c(-0.25,0)))
+# 
+# print('temp succesfull')
+# # WINTER SPECIES 
+# info <- apply(VP_season$vals,2,which.max)
+# table(info)
+# 
+# focal_species <- names(info[info==2])
+# indices <-  which(colnames(VP_season$vals)%in%focal_species)
+# VP_guild <- VP_season
+# VP_guild$vals <- VP_season$vals[,indices]
+# main <- paste0('Variance Partitioning - ','Winter most important',' - Grouped by season')
+# Hmsc::plotVariancePartitioning(m,VP_guild,
+#                                cols = c('coral',
+#                                         'lightblue',
+#                                         'lightgreen',
+#                                         'goldenrod2',
+#                                         'springgreen4',
+#                                         'cornsilk2',
+#                                         'cornsilk3'),
+#                                main = main,
+#                                las = 2,
+#                                border = NA,
+#                                space=0,
+#                                axisnames=T,
+#                                ann=T,
+#                                args.legend = list(x = 'topright',
+#                                                   inset=c(-0.25,0)))
+# 
+# print('winter succesfull')
+# 
+# # YEARLY TEMPERATURE MOST IMPORTANT
+# info <- apply(VP$vals,2,which.max)
+# table(info)
+# 
+# focal_species <- names(info[info==1])
+# indices <-  which(colnames(VP$vals)%in%focal_species)
+# VP_guild <- VP
+# VP_guild$vals <- VP$vals[,indices]
+# main <- paste0('Variance Partitioning - ','Yearly temperature most important')
+# Hmsc::plotVariancePartitioning(m,VP_guild,
+#                                cols = c('firebrick3',
+#                                         'firebrick2',
+#                                         'firebrick1',
+#                                         'dodgerblue3',
+#                                         'dodgerblue2',
+#                                         'dodgerblue1',
+#                                         'goldenrod2',
+#                                         'goldenrod1',
+#                                         colorRampPalette(c("springgreen4", "springgreen1"))(8),
+#                                         'cornsilk2',
+#                                         'cornsilk3'),
+#                                main = main,
+#                                las = 2,
+#                                border = NA,
+#                                space=0,
+#                                axisnames=T,
+#                                ann=T,
+#                                args.legend = list(x = 'topright',
+#                                                   inset=c(-0.25,0)))
+# 
+# print('yearly succesfull')
 # 
 # 
 # 
-# eta2_df <- cbind(eta2,xy)
-# ggplot(eta2_df,aes(x=lon,y=lat,col=eta2))+
-#   geom_point(cex=3)+
-#   scale_colour_gradient2(
-#     low = "blue",      # color for negative values
-#     mid = "ivory",     # color for zero
-#     high = "red",      # color for positive values
-#     midpoint = 0
-#   )
+# dev.off()
 # 
-# eta3_df <- cbind(eta3,xy)
-# ggplot(eta3_df,aes(x=lon,y=lat,col=eta3))+
-#   geom_point(cex=3)+
-#   scale_colour_gradient2(
-#     low = "blue",      # color for negative values
-#     mid = "ivory",     # color for zero
-#     high = "red",      # color for positive values
-#     midpoint = 0
-#   )
 # 
-# eta4_df <- cbind(eta4,xy)
-# ggplot(eta4_df,aes(x=lon,y=lat,col=eta4))+
-#   geom_point(cex=3)+
-#   scale_colour_gradient2(
-#     low = "blue",      # color for negative values
-#     mid = "ivory",     # color for zero
-#     high = "red",      # color for positive values
-#     midpoint = 0
-#   )
+# dev.new()
+# }
 # 
-# eta5_df <- cbind(eta5,xy)
-# ggplot(eta5_df,aes(x=lon,y=lat,col=eta5))+
-#   geom_point(cex=3)+
-#   scale_colour_gradient2(
-#     low = "blue",      # color for negative values
-#     mid = "ivory",     # color for zero
-#     high = "red",      # color for positive values
-#     midpoint = 0
-#   )
+# # PARAMETER ESTIMATES -----------------------------------------------------
+# # plot.new()
+# # postBeta <- readRDS(file.path(input,'model-outputs','posterior-Beta.rds'))
+# # plotBeta(m,post = postBeta,
+# #          param = "Sign", supportLevel = 0.95)
+# # postGamma <- readRDS(file.path(input,'model-outputs','posterior-Gamma.rds'))
+# # plotGamma(m,post = postGamma,
+# #          param = "Mean", supportLevel = 0.95)
+# # 
+# # getPostEstimate(fitSepTF)
+# # 
+# # postAlpha <- getPostEstimate(fitSepTF,parName='Alpha',r=2)
+# # mpost<-convertToCodaObject(fitSepTF)
+# # 
+# # # spatial structure
+# # summary(mpost$Alpha[[1]])[2]$quantiles[1,]
+# # # temporal structure
+# # summary(mpost$Alpha[[2]])[2]$quantiles[1,]
+# # 
+# # summary(mpost$Alpha[[2]])
+# # 
+# # fitSepTF
+# # 
+# # postEta <- getPostEstimate(fitSepTF,parName='Eta')
+# # summary(postEta$support)
+# # 
+# # 
+# # i <- 1
+# # for(i in 1:ncol(postEta$mean)){
+# #   eta <- postEta$mean[,i]
+# #   eta2 <- cbind(eta,xy)
+# #   p<-ggplot(eta2,aes(x=lon,y=lat,col=eta))+
+# #     geom_point(cex=3)+
+# #     labs(title=i)+
+# #     scale_colour_gradient2(
+# #       low = "blue",      # color for negative values
+# #       mid = "ivory",     # color for zero
+# #       high = "red",      # color for positive values
+# #       midpoint = 0
+# #     )
+# #   print(p)
+# # }
+# # 
+# # xy <- fitSepTF$rL[[1]]$s
+# # 
+# # summary(mpost$Alpha[[1]])[2]
+# # 
+# # 
+# # 
+# # eta2_df <- cbind(eta2,xy)
+# # ggplot(eta2_df,aes(x=lon,y=lat,col=eta2))+
+# #   geom_point(cex=3)+
+# #   scale_colour_gradient2(
+# #     low = "blue",      # color for negative values
+# #     mid = "ivory",     # color for zero
+# #     high = "red",      # color for positive values
+# #     midpoint = 0
+# #   )
+# # 
+# # eta3_df <- cbind(eta3,xy)
+# # ggplot(eta3_df,aes(x=lon,y=lat,col=eta3))+
+# #   geom_point(cex=3)+
+# #   scale_colour_gradient2(
+# #     low = "blue",      # color for negative values
+# #     mid = "ivory",     # color for zero
+# #     high = "red",      # color for positive values
+# #     midpoint = 0
+# #   )
+# # 
+# # eta4_df <- cbind(eta4,xy)
+# # ggplot(eta4_df,aes(x=lon,y=lat,col=eta4))+
+# #   geom_point(cex=3)+
+# #   scale_colour_gradient2(
+# #     low = "blue",      # color for negative values
+# #     mid = "ivory",     # color for zero
+# #     high = "red",      # color for positive values
+# #     midpoint = 0
+# #   )
+# # 
+# # eta5_df <- cbind(eta5,xy)
+# # ggplot(eta5_df,aes(x=lon,y=lat,col=eta5))+
+# #   geom_point(cex=3)+
+# #   scale_colour_gradient2(
+# #     low = "blue",      # color for negative values
+# #     mid = "ivory",     # color for zero
+# #     high = "red",      # color for positive values
+# #     midpoint = 0
+# #   )
+# # 
+# # eta6_df <- cbind(eta6,xy)
+# # ggplot(eta6_df,aes(x=lon,y=lat,col=eta6))+
+# #   geom_point(cex=3)+
+# #   scale_colour_gradient2(
+# #     low = "blue",      # color for negative values
+# #     mid = "ivory",     # color for zero
+# #     high = "red",      # color for positive values
+# #     midpoint = 0
+# #   )
 # 
-# eta6_df <- cbind(eta6,xy)
-# ggplot(eta6_df,aes(x=lon,y=lat,col=eta6))+
-#   geom_point(cex=3)+
-#   scale_colour_gradient2(
-#     low = "blue",      # color for negative values
-#     mid = "ivory",     # color for zero
-#     high = "red",      # color for positive values
-#     midpoint = 0
-#   )
-
-
-
-
-# OTHER STUFF  ------------------------------------------------------------
-
-between <- 'mods-complexity-v1'
-dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
-inaloop <- F
-for(dir in seq_along(dirs)){
-  if(grepl('oceanthresholds',dirs[dir])){
-    inaloop <- T
-    
-
-# GETTING STARTED  --------------------------------------------------------
-    mod <- '2025-09-26_16-15-15_singleev_tmean_year'
-    between <- 'mods-complexity-v1'
-    input <- file.path('./tmp_rds',between,mod)
-    if(inaloop){
-      input <- dirs[dir]
-      print(input)
-    }
-    source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
-    m <- readRDS(file.path(input,'m_object.rds'))
-    print(nrow(m$X))
-    
-  }
-}
+# 
+# 
+# 
+# # OTHER STUFF  ------------------------------------------------------------
+# 
+# between <- 'mods-complexity-v1'
+# dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
+# inaloop <- F
+# for(dir in seq_along(dirs)){
+#   if(grepl('oceanthresholds',dirs[dir])){
+#     inaloop <- T
+#     
+# 
+# # GETTING STARTED  --------------------------------------------------------
+#     mod <- '2025-09-26_16-15-15_singleev_tmean_year'
+#     between <- 'mods-complexity-v1'
+#     input <- file.path('./tmp_rds',between,mod)
+#     if(inaloop){
+#       input <- dirs[dir]
+#       print(input)
+#     }
+#     source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
+#     m <- readRDS(file.path(input,'m_object.rds'))
+#     print(nrow(m$X))
+#     
+#   }
+# }

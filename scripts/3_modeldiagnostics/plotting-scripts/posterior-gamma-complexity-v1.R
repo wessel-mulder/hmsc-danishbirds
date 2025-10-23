@@ -4,7 +4,7 @@ m <- fitSepTF
 if(!is.null(fitSepTF$TrData)){
 parName = 'Gamma'
 plotType = 'Sign'
-characteristic = c('Guild','Migratory')
+characteristic = c('Migratory strategy / Guild')
 newEnvNames <- c('Yearly temp.','Yearly prec.','Heterogeneity')
 
 plotGammaSign <- function(m,
@@ -34,29 +34,35 @@ plotGammaSign <- function(m,
     toPlot = sign(meanEst)
     toPlot = toPlot * ((supportEst > supportLevel) + (supportEst < (1 - supportLevel)) > 0)
 
-    
     # Remove intercept for Beta (if it's present)
     toPlot <- toPlot[-1, ]  # Remove intercept row
     rowNames <- rowNames[-1]  # Adjust row names
-    colnames <- m$trNames
+    
+    # get colnames 
+    colnames <- m$trN
     
     # get columns sorted:
     categories <- colnames(m$TrData)
-    if(length(categories)==1){
-    for(cat in categories){
-      uniques_in_cat <- unique(m$TrData[[cat]])
-      
-      # Keep gsub ugly name out
-      colnames <- gsub(cat,"",colnames)
+    cat <- 'Migration_a3_DOF'
+    uniques_in_cat <- sapply(categories,function(cat){
+      uniques <- unique(m$TrData[[cat]])
+    })
+    all_uniques <- unlist(uniques_in_cat, use.names = FALSE)    # Keep gsub ugly name out
+    colnames <- gsub('Migration_a3_DOF',"",colnames)
+    colnames <- gsub('foraging_guild_consensus',"",colnames)
+
+
       
       # find the intercept
-      intercept <- setdiff(uniques_in_cat,colnames)
-      
-      colnames[1] <- paste0('Intercept - ',intercept)
-    }
-      
-    }else if(length(categories)==2){
-    }
+      intercept <- setdiff(all_uniques,colnames)
+      if(length(intercept)==1){
+        colnames[1] <- paste0('Intercept - ',intercept)
+      } else if(length(intercept)==2){
+        colnames[1] <- paste0('Intercept - ',intercept[1])
+        colnames[1] <- paste0(intercept[1],' - ',intercept[2])
+        
+      }
+
     #   print('test')
     #   for(cat in categories){
     #     uniques_in_cat <- unique(m$TrData[[cat]])
@@ -86,7 +92,7 @@ plotGammaSign <- function(m,
   rownames(plotMat) <- rowNames
   
   # Reorder matrix based on parameter type
-  plotMat <- plotMat[, rev(order(colnames(plotMat))),drop=F]  # Reorder columns
+  #plotMat <- plotMat[, rev(order(colnames(plotMat))),drop=F]  # Reorder columns
   
   # Prepare data for ggplot
   plotMatmelt <- as.data.frame(melt(as.matrix(plotMat)))
@@ -152,7 +158,7 @@ if(length(colnames(fitSepTF$TrData))==1){
     alt_char <- 'Migratory strategy'
   }
 }else if (length(colnames(fitSepTF$TrData))==2){
-  alt_char <- c('Migratory strategy','Guild')
+  alt_char <- c('Migratory strategy / Guild')
 }
   
 
@@ -169,3 +175,4 @@ print(p)
 
 dev.off()
 }
+

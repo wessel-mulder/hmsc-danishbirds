@@ -57,6 +57,7 @@ og_S = data.frame(rich = rowSums(og_Y))
 og_xyrich <- merge(merge,og_S,by='row.names')
 rownames(og_xyrich) <- og_xyrich$Row.names
 
+max(og_xyrich$rich) 
 
 # PREDICTION DATA  --------------------------------------------------------
 # get richnes 
@@ -64,6 +65,7 @@ S = data.frame(rich = rowSums(preds))
 xyrich <- merge(merge,S,by='row.names')
 rownames(xyrich) <- xyrich$Row.names
 
+max(xyrich$rich) 
 
 # DIFFERENCE  -------------------------------------------------------------
 diff <- S - og_S
@@ -91,11 +93,14 @@ pdf(file=file.path(input,'results','sp-preds-richness.pdf'),
 
 par(mar=c(10,5,5,5))
 
+# set number of species to go to 
+if(all_species==1){max_bar <- 120}else{max_bar <- nspecies}
+
 
 # PREDICTIONS 
 cols <- pal(ncolz)[as.numeric(cut(
   xyrich$rich, 
-  breaks = seq(0, nspecies, length.out = ncolz),
+  breaks = seq(0, max_bar, length.out = ncolz),
   include.lowest = T
 ))]
 
@@ -107,7 +112,7 @@ plot(xyrich$X, xyrich$Y, col = cols, pch = 19,
 
 # fixed legend from 0 to 12
 image.plot(legend.only = TRUE,
-           zlim = c(0, nspecies),      # force scale 0-12
+           zlim = c(0, max_bar),      # force scale 0-12
            col = pal(ncolz),
            legend.lab = "Richness",
            horizontal = T)
@@ -115,7 +120,7 @@ image.plot(legend.only = TRUE,
 # OG 
 og_cols <- pal(ncolz)[as.numeric(cut(
   og_xyrich$rich, 
-  breaks = seq(0, nspecies, length.out = ncolz),
+  breaks = seq(0, max_bar, length.out = ncolz),
   include.lowest = T
 ))]
 table(is.na(og_cols))
@@ -128,13 +133,14 @@ plot(og_xyrich$X, og_xyrich$Y, col = og_cols, pch = 19,
 
 # fixed legend from 0 to 12
 image.plot(legend.only = TRUE,
-           zlim = c(0, nspecies),      # force scale 0-12
+           zlim = c(0, max_bar),      # force scale 0-12
            col = pal(ncolz),
            legend.lab = "Richness",
            horizontal = T)
 
 # DIFFERENCE 
-scale_bar_richness <- c(-2,2)
+# set scale bar depencing on model
+if(all_species==1){scale_bar_richness <- c(-6,6)}else{scale_bar_richness <- c(-2,2)}
 # Cap values below/above limits
 vals <- pmax(pmin(xydiff$rich, scale_bar_richness[2]), scale_bar_richness[1])
 
@@ -147,6 +153,15 @@ diff_cols <- pal(ncolz)[as.numeric(cut(
 if (any(is.na(diff_cols))) {
   stop("Error: There are NA values in diff_cols. Edit the scale bar")
 }
+
+if(all_species==1){
+  plot_list <- list(at = c(-6,-3,0,3,6),
+                    labels = c('< -6','-3','0','3','> 6'))
+}else{
+    plot_list <- list(at = c(-2,-1,0,1,2),
+                      labels = c('< -2','-1','0','1','> 2'))
+}
+
 plot(xydiff$X, xydiff$Y, col = diff_cols, pch = 19,
      xlab = 'X',
      ylab = 'Y',
@@ -155,8 +170,7 @@ image.plot(legend.only = TRUE,
            zlim = scale_bar_richness,      # force scale 
            col = pal(ncolz),
            legend.lab = "Difference",
-           axis.args = list(at = c(-2,-1,0,1,2),
-                            labels = c('< -2','-1','0','1','> 2')),
+           axis.args = plot_list,
            horizontal = T)
 
 dev.off()

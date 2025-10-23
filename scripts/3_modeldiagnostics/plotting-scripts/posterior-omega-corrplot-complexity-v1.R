@@ -29,10 +29,15 @@ colnames(toPlot) <- abbreviate_genus(colnames(toPlot))
 
 mar=c(1,1,1,1)
 
-
+width <- 7
+height <- 7
+if(all_species ==1){
+  width <- 20
+  height <- 20
+}
 pdf(file=file.path(input,'results','posterior-omega-coorplot.pdf'),
-    width = 7,
-    height = 7)
+    width = width,
+    height = height)
 
 
 # reorder using eigenvectors
