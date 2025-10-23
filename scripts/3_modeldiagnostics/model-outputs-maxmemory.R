@@ -12,6 +12,7 @@ sp_pred_flag <- args[7]
 post_estimates_flag <- args[8]
 taxonomy_flag <- args[9]
 spatial_flag <- args[10]
+temporal_flag <- args[11]
 
 
 # GETTING STARTED ---------------------------------------------------------
@@ -124,6 +125,15 @@ params <- list(
  if(taxonomy_flag == 1){
   params$Rho <- mpost$Rho
  }
+ if(temporal_flag == 1){
+    params$eta2 <- mpost$Eta[[2]]
+    params$alpha2 = mpost$Alpha[[2]]
+    params$omega2 = mpost$Omega[[2]]
+    params$lambda2 = mpost$Lambda[[2]]
+    params$psi2 = mpost$Psi[[2]]
+    params$delta2 = mpost$Delta[[2]]
+ }
+
 
 diags <- list(psrf = list(), ess = list())
 chunk_size <- 10
@@ -162,7 +172,7 @@ print('psrf and ess succesfully saved')
 
 # AUC-TJUR ----------------------------------------------------------------
 fit_output <- file.path(input,'model-outputs','model-fit.rds')
-
+print('starting model-fit')
 ### HEAVY 
 if (fit_flag == 1) {
 preds_expected  <- pcomputePredictedValues(fitSepTF,expected=T)
@@ -229,7 +239,7 @@ print('model fit succesfully saved')
 
 # VP ----------------------------------------------------------------
 
-if (fit_flag == 1) {
+if (VP_flag == 1) {
 VP = computeVariancePartitioning(fitSepTF)
 saveRDS(VP,file=file.path(input,'model-outputs','VP.rds'))
 print('variance partitions succesfully saved')
