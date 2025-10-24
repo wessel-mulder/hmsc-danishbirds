@@ -196,6 +196,7 @@ for(atlasnr in atlases){
   Y_sub <- Y[rownames(Y)[grep(pattern, rownames(Y))],,drop=F]
   X_sub <- X[rownames(X)[grep(pattern, rownames(X))],,drop=F]
   Design_sub <- Design[rownames(Design)[grep(pattern, rownames(Design))],,drop=F]
+  Design_sub$atlas <- droplevels(Design_sub$atlas)
   #Design_sub <- Design_sub[,c('site','year'),drop=F]
   
   # and time
@@ -218,10 +219,19 @@ for(atlasnr in atlases){
   print(head(Y_sub[,1:5]))
   print(tail(Y_sub[,1:5]))
   
-  
+  summary(m)
+  m$rLNames
+  m$ranLevels
+  m$ranLevels$site
+  m$ranLevels$atlas
+  m$studyDesign
   ### IN RSTUDIO START SAMPLING 
   if(flagFitR){
     print('Rstudio stuff executed')
+    init_obj <- sampleMcmc(m, samples=nSamples, thin=thin,
+                           transient=transient, nChains=nChains,
+                           verbose = verbose,
+                           engine="HPC")
   }
   ### IN HPC ENVIORNMENT SET UP INIT
   if(flagInit){
