@@ -55,10 +55,12 @@ if(length(VP$groupnames)==1){
     alt_name <- c('Yearly temp.','Yearly prec.','Heterogeneity')
     colorway <- c('firebrick3','dodgerblue3','goldenrod2','cornsilk2')
   }
+  if(nrow(VP$vals)-length(VP$groupnames)==2){
+    colorway <- c(colorway,'cornsilk3')
+  }
 }
 
 VP_2$groupnames <- alt_name
-
 
 colnames(VP_2$vals) <- sub("^([A-Za-z])[A-Za-z]+_([a-z]+)$", "\\1. \\2", colnames(VP_2$vals))
 plotVariancePartitioning2(fitSepTF,
@@ -74,4 +76,4 @@ plotVariancePartitioning2(fitSepTF,
                           cols = colorway,
                           VP_2,
                           main = 'Total variance explained')
-dev.off()
+dev.off() 

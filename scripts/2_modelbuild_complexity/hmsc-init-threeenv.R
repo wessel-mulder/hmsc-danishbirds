@@ -3,7 +3,11 @@ rm(list = ls())
 # Define MCMC settings
 env_vars <- c('tmean_year','prec_year','hh')
 chars <- c('all')
-atlases <- c('1','2','3')
+atlases <- list(c('1','2'),
+                c('1','3'),
+                c('2','3'),
+                c('1','2','3')
+)
 
 nChains <- 4
 thin <- 10
@@ -97,7 +101,7 @@ Y <- Y[row.names(Y) %in% sites_actual,]
 
 # phylloscopus also very absent in some of the thresholds now 
 #Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
-for(number in atlases){
+for(number in c('1','2','3')){
   Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
   if(any(colSums(Y_sub, na.rm =T)<5)){
     print(paste0('In atlas ',number,' these species: '))
@@ -109,7 +113,7 @@ for(number in atlases){
   }
 }
 
-for(number in atlases){
+for(number in c('1','2','3')){
   Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
   if(any(colSums(Y_sub, na.rm =T)<5)){
     print(paste0('In atlas ',number,' these species: '))
@@ -172,6 +176,7 @@ setdiff(rownames(pd_matrix),names(Y))
 # Define model types: 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 
+atlasnr <- c('1','2')
 # loop over different atlases 
 for(atlasnr in atlases){
   ### SAME ACROSS ALL MODELS
@@ -186,24 +191,33 @@ for(atlasnr in atlases){
   struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "Full")
   
   # keep only atlas 1,2,3 
-  if(atlasnr %in% c('1','2','3')){
-    Y_sub <- Y[rownames(Y)[grep(paste0("_",atlasnr,"$"), rownames(Y))],,drop=F]
-    X_sub <- X[rownames(X)[grep(paste0("_",atlasnr,"$"), rownames(X))],,drop=F]
-    Design_sub <- Design[rownames(Design)[grep(paste0("_",atlasnr,"$"), rownames(Design))],,drop=F]
-    Design_sub <- Design_sub[,c('site'),drop=F]
-    
-    m <-Hmsc(Y = Y_sub, 
-             XData = X_sub,
-             XFormula = XFormula,
-             TrData = Tr,
-             TrFormula = TrFormula,
-             phyloTree = phy,
-             studyDesign = Design_sub[,c('site'),drop=F], 
-             ranLevels = list('site'=struc_space),
-             distr='probit')
-  }
+  pattern <- paste0("_(", paste(atlasnr, collapse = "|"), ")$")
   
-  print(head(Y_sub))
+  Y_sub <- Y[rownames(Y)[grep(pattern, rownames(Y))],,drop=F]
+  X_sub <- X[rownames(X)[grep(pattern, rownames(X))],,drop=F]
+  Design_sub <- Design[rownames(Design)[grep(pattern, rownames(Design))],,drop=F]
+  #Design_sub <- Design_sub[,c('site','year'),drop=F]
+  
+  # and time
+  years_unique <- distinct(data.frame(Year = Design_sub$year))
+  rownames(years_unique) <- unique(Design_sub$atlas) 
+  struc_time <- HmscRandomLevel(sData = years_unique, sMethod = "Full")
+  
+  m <-Hmsc(Y = Y_sub, 
+           XData = X_sub,
+           XFormula = XFormula,
+           TrData = Tr,
+           TrFormula = TrFormula,
+           phyloTree = phy,
+           studyDesign = Design_sub[,c('site','atlas'),drop=F], 
+           ranLevels = list('site'=struc_space,
+                            'atlas'=struc_time),
+           distr='probit')
+  
+  
+  print(head(Y_sub[,1:5]))
+  print(tail(Y_sub[,1:5]))
+  
   
   ### IN RSTUDIO START SAMPLING 
   if(flagFitR){
@@ -217,7 +231,7 @@ for(atlasnr in atlases){
                            verbose = verbose,
                            engine="HPC")
     
-    dir_name <- paste0(date,'_threeenv_allspecies_atlas_',atlasnr)
+    dir_name <- paste0(date,'_threeenv_allspecies_atlas_',  paste(atlasnr, collapse = ""))
     dir.create(file.path(input,'tmp_rds',dir_name))
     
     init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")

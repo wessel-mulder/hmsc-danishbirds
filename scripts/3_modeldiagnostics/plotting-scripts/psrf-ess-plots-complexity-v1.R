@@ -12,7 +12,7 @@ megalist <- list(
     name  = "Guilds/strategies x Environment",
     color = "purple4"
   ),
-  rho = if (taxonomy_flag == 1) list(
+  Rho = if (taxonomy_flag == 1) list(
     obj   = mpost$Rho,
     name  = "Taxonomy",
     color = "orange"
@@ -56,12 +56,44 @@ megalist <- list(
     obj   = mpost$Delta[[1]],
     name  = "Global shrinkage - species loadings 1",
     color = "cyan4"
-  )
+  ),
+  eta2 = if (temporal_flag == 1) list(
+    obj   = mpost$Eta[[2]],
+    name  = "Site loadings 2",
+    color = "cornsilk3"
+  ) else NULL,
+  alpha2 = if (temporal_flag == 1) list(
+    obj   = mpost$Alpha[[2]],
+    name  = "Scale of latent factors 2",
+    color = "ivory"
+  ) else NULL,
+  omega2 = if (temporal_flag == 1) list(
+    obj   = mpost$Omega[[2]],
+    name  = "Species associations 2",
+    color = "blue4"
+  ) else NULL,
+  lambda2 = if (temporal_flag == 1) list(
+    obj   = mpost$Lambda[[2]],
+    name  = "Species loadings 2",
+    color = "lightblue"
+  ) else NULL,
+  psi2 = if (temporal_flag == 1) list(
+    obj   = mpost$Psi[[2]],
+    name  = "Local shrinkage - species loadings 2",
+    color = "cyan3"
+  ) else NULL,
+  delta2 = if (temporal_flag == 1) list(
+    obj   = mpost$Delta[[2]],
+    name  = "Global shrinkage - species loadings 2",
+    color = "cyan4"
+  ) else NULL
 )
+
+megalist$
 
 # Drop NULL entries (so rho disappears cleanly if taxonomy_flag == 0)
 megalist <- megalist[!sapply(megalist, is.null)]
-
+megalist$Rho
 # =============================
 # GATHER DIAGNOSTICS
 # =============================
@@ -91,9 +123,9 @@ cat("Plotting PSRF distributions...\n")
 
 all_psrf <- lapply(all_psrf, function(x) {
   x[!is.finite(x)] <- 1
-  if (length(unique(x)) == 1) x[2] <- x[1] + 0.001
   x
 })
+
 
 # Extract colors and names from megalist
 cols <- sapply(megalist[names(all_psrf)], function(x) x$color)

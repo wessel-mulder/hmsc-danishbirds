@@ -15,7 +15,7 @@ post_estimates_flag <- 1
 #dirs <- dirs[11]
 for(dir in seq_along(dirs)){
   print(dir)
- if(grepl('all_species',dirs[dir])){
+ if(grepl('threeenv_allspecies',dirs[dir])){
 
  #   print('T')
     inaloop <- T
@@ -110,7 +110,7 @@ if(nrow(fitSepTF$XData)>5000){all_atlas <- 1}else{all_atlas <- 0}
 if(psrfess_flag == 1){
 print('starting psrf-ess plots')
 diags <- readRDS(file.path(input,'model-outputs','psrf-ess.rds'))
-
+summary(diags$psrf)
 if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
   source(file.path(source_path,'psrf-ess-plots-complexity-v1.R'))
 }else{
@@ -171,6 +171,7 @@ if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
 }else{
 
 }
+  print('posterior estimates finished')
 }
 # CHAINS ------------------------------------------------------------------
 if(chains_flag == 1){

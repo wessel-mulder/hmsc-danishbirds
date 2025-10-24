@@ -53,19 +53,15 @@ xycoords <- xycoords[,c('X','Y')]
 merge <- merge(design,xycoords, by.x = 'site', by.y = 'row.names', all.x =T)
 rownames(merge) <- rownames(design)
 
-
 # OG RICHNESS  ------------------------------------------------------------
 og_Y = fitSepTF$Y
 og_xy_species <- merge(merge,og_Y,by='row.names')
 rownames(og_xy_species) <- og_xy_species$Row.names
-head(og_xy_species)
 
 # PREDICTION DATA  --------------------------------------------------------
 # get richnes 
 xy_species <- merge(merge,preds,by='row.names')
 rownames(xy_species) <- xy_species$Row.names
-head(xy_species[,5:7])
-head(og_xy_species[,5:7])
 
 # PLOTTING ----------------------------------------------------------------
 # make a continuous color palette
@@ -94,80 +90,99 @@ abbreviate_genus <- function(x) {
 # define legend range
 #zlim <- range(xyrich$rich, na.rm = TRUE)
 #zseq <- seq(zlim[1], zlim[2], length.out = ncolz)
-if(!dir.exists(file.path(input,'results','sp-preds-singlespecies'))) {dir.create(file.path(input,'results','sp-preds-singlespecies'))}
-specie <- species[1]
-for(specie in species){
+
+# get idea of how many atlases are in this set 
+replicates <- sub("^.*_", "", rownames(xy_species))
+replicates <- unique(replicates)
+replicate <- 1
+lapply(replicates,function(replicate){
+  if(replicate=='1'){year <- '1970s'}
+  if(replicate=='2'){year <- '1990s'}
+  if(replicate=='3'){year <- '2010s'}
   
-pdf(file=file.path(input,'results','sp-preds-singlespecies',paste0(specie,'.pdf')),
-    width = 10,
-    height = 10)
+  
+  print(replicate)
+  singlespeciesatlasdir <- file.path(input,'results',paste0('sp-preds-singlespecies-atlas-',replicate))
+  if(!dir.exists(singlespeciesatlasdir)){dir.create(singlespeciesatlasdir)}
+  
+  ### DATA SUBSETS FOR ATLAS 
+  xy_species_sub <- xy_species[rownames(xy_species)[grep(paste0("_",replicate,"$"), rownames(xy_species))],,drop=F]
+  og_xy_species_sub <- og_xy_species[rownames(og_xy_species)[grep(paste0("_",replicate,"$"), rownames(og_xy_species))],,drop=F]
+  
 
-par(mar=c(10,5,5,5))
+  for(specie in species){
+  
+    pdf(file=file.path(singlespeciesatlasdir,
+                       paste0(specie,'-atlas-',replicate,'.pdf')),
+        width = 10,
+        height = 10)
 
-nicename <- abbreviate_genus(specie)
-# PREDICTIONS 
-cols <- pal(ncolz)[as.numeric(cut(
-  xy_species[,specie], 
-  breaks = seq(0, 1, length.out = ncolz),
-  include.lowest = T
-  ))]
-# plot the points
-plot(xy_species$X, xy_species$Y, col = cols, pch = 19,
-     xlab = 'X',
-     ylab = 'Y',
-     main = paste0('Predicted occurrence probability - ',nicename))
-# fixed legend from 0 to 12
-image.plot(legend.only = TRUE,
-           zlim = c(0, 1),      # force scale 0-12
-           col = pal(ncolz),
-           legend.lab = "Probability",
-           horizontal = T)
+    par(mar=c(10,5,5,5))
 
-# OG 
-# define a binary palette: 0 = light red, 1 = dark red
-binary_cols <- c("indianred1",pal_raw[9])
+    nicename <- abbreviate_genus(specie)
+    # PREDICTIONS 
+    cols <- pal(ncolz)[as.numeric(cut(
+      xy_species_sub[,specie], 
+      breaks = seq(0, 1, length.out = ncolz),
+      include.lowest = T
+      ))]
+    # plot the points
+    plot(xy_species_sub$X, xy_species_sub$Y, col = cols, pch = 19,
+         xlab = 'X',
+         ylab = 'Y',
+         main = paste0('Predicted occurrence probability - ',nicename,' - ',year))
+    # fixed legend from 0 to 12
+    image.plot(legend.only = TRUE,
+               zlim = c(0, 1),      # force scale 0-12
+               col = pal(ncolz),
+               legend.lab = "Probability",
+               horizontal = T)
 
-# assume og_xy_species[,specie] contains 0/1
-og_cols <- binary_cols[og_xy_species[,specie] + 1]  # +1 because R indexes start at 1
+    # OG 
+    # define a binary palette: 0 = light red, 1 = dark red
+    binary_cols <- c("indianred1",pal_raw[9])
+    
+    # assume og_xy_species[,specie] contains 0/1
+    og_cols <- binary_cols[og_xy_species_sub[,specie] + 1]  # +1 because R indexes start at 1
+    
+    # plot the points
+    plot(og_xy_species_sub$X, og_xy_species_sub$Y, col = og_cols, pch = 19,
+         xlab = 'X',
+         ylab = 'Y',
+         main = paste0(year,' - Presence/Absence'))
+    # add a binary legend
+    image.plot(legend.only = TRUE,
+               zlim = c(0,1),                   # 0/1 scale
+               col = binary_cols,                # binary colors
+               legend.shrink = 0.5,
+               axis.args = list(at = c(0,1), labels = c("Absent","Present")),
+               legend.lab = "",
+               horizontal = T)
+    
+    # DIFFERENCE 
+    diff <- data.frame(diff = xy_species_sub[,specie] - og_xy_species_sub[,specie])
+    rownames(diff) <- rownames(xy_species_sub)
+    xydiff <- merge(merge,diff,by='row.names')
+    head(xydiff)
+    diff_cols <- diffpal(ncolz)[as.numeric(cut(
+      xydiff$diff, 
+      breaks = seq(-1, 1, length.out = ncolz),
+      include.lowest = T,
+      ))]
+    
+    plot(xydiff$X, xydiff$Y, col = diff_cols, pch = 19,
+         xlab = 'X',
+         ylab = 'Y',
+         main = 'Predicted probabilites vs Observed')
+    image.plot(legend.only = TRUE,
+               zlim = c(-1,1),      # force scale 
+               col = diffpal(ncolz),
+               legend.lab = "Difference",
+               horizontal = T)
+    
+    dev.off()
 
-# plot the points
-plot(og_xy_species$X, og_xy_species$Y, col = og_cols, pch = 19,
-     xlab = 'X',
-     ylab = 'Y',
-     main = 'Atlas 3 - Presence/Absence')
-# add a binary legend
-image.plot(legend.only = TRUE,
-           zlim = c(0,1),                   # 0/1 scale
-           col = binary_cols,                # binary colors
-           legend.shrink = 0.5,
-           axis.args = list(at = c(0,1), labels = c("Absent","Present")),
-           legend.lab = "",
-           horizontal = T)
-
-# DIFFERENCE 
-diff <- data.frame(xy_species[,specie] - og_xy_species[,specie])
-rownames(diff) <- rownames(xy_species)
-xydiff <- merge(merge,diff,by='row.names')
-head(xydiff)
-colnames(xydiff) <- c('row.names','site','X','Y','diff')
-diff_cols <- diffpal(ncolz)[as.numeric(cut(
-  xydiff$diff, 
-  breaks = seq(-1, 1, length.out = ncolz),
-  include.lowest = T,
-  ))]
-
-plot(xydiff$X, xydiff$Y, col = diff_cols, pch = 19,
-     xlab = 'X',
-     ylab = 'Y',
-     main = 'Predicted probabilites vs Observed')
-image.plot(legend.only = TRUE,
-           zlim = c(-1,1),      # force scale 
-           col = diffpal(ncolz),
-           legend.lab = "Difference",
-           horizontal = T)
-
-dev.off()
-
+  }
 }
- 
+)
 

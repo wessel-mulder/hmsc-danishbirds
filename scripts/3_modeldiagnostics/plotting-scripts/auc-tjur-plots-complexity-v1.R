@@ -140,7 +140,6 @@ dev.off()
 
 # GUILD / STRATEGIES VIOLIN PLOTS  ----------------------------------------
 
-plot.new()
 head(join)
 # make pdf 
 pdf(file=file.path(input,'results','AUC_TjurR2_guilds-strategies.pdf'),
@@ -175,8 +174,17 @@ for(specieschar in c('foraging_guild_consensus','Migration_a3_DOF')){
     # Split your data into groups
     groups_start <- split(join_traits[[speciesstat]], join_traits[[specieschar]])
     
+    # Compute median (or single value if only one observation)
+    group_medians <- sapply(groups_start, function(x) {
+      if (length(x) == 1) {
+        x  # just return that single value
+      } else {
+        median(x, na.rm = TRUE)
+      }
+    })
+    
     if(specieschar == 'foraging_guild_consensus' && speciesstat == 'tjur'){
-    order_guild_tjur <- names(sort(sapply(groups_start,mean)))
+    order_guild_tjur <- names(sort(group_medians))
     order <- order_guild_tjur
     }
     if(specieschar == 'foraging_guild_consensus' && speciesstat == 'auc'){
@@ -188,6 +196,7 @@ for(specieschar in c('foraging_guild_consensus','Migration_a3_DOF')){
                'short-distance',
                'sedentary and short-distance',
                'sedentary')
+    order <- intersect(order,names(groups_start))
     }
 
     groups <- groups_start[order]
@@ -198,11 +207,12 @@ for(specieschar in c('foraging_guild_consensus','Migration_a3_DOF')){
     
     #join_traits$foraging_guild_consensus <- as.factor(join_traits$foraging_guild_consensus)
     # Make the violin plot
-    
+
     plot(0:1,0:1,type = 'n',ylim=c(0.5,length(groups)+0.5),xlim=xlim,
          axes=F,ann=F)
     vioplot(groups,add=T,horizontal=T,
-            col=c('purple'))
+            col=c('white'),colMed='grey20',rectCol='grey50',
+            lineCol='grey50')
     
     # Add single-value points
     singles <- groups[single_groups]
@@ -210,12 +220,11 @@ for(specieschar in c('foraging_guild_consensus','Migration_a3_DOF')){
       x = unlist(singles),
       y = which(single_groups),
       pch = 19,
-      col = 'purple',
+      col = 'grey20',
       cex = 1.2
     )
     
-    if(speciesstat == 'auc'){axis(side=1,at=seq(xlim[1],xlim[2],0.1))}
-    else{axis(side=1,at=seq(xlim[1],xlim[2],0.2))}
+    if(speciesstat == 'auc'){axis(side=1,at=seq(xlim[1],xlim[2],0.1))}else{axis(side=1,at=seq(xlim[1],xlim[2],0.2))}
     axis(side=2,at=1:length(groups),labels=names(groups),las=1)
     title(main = paste0(namestat,' by ',namechar))
   }

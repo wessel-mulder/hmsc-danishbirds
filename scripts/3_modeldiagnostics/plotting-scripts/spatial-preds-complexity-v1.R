@@ -69,7 +69,10 @@ max(xyrich$rich)
 
 # DIFFERENCE  -------------------------------------------------------------
 diff <- S - og_S
+head(S)
+head(og_S)
 xydiff <- merge(merge,diff,by='row.names')
+head(xydiff)
 rownames(xydiff) <- xydiff$Row.names
 
 table(og_xyrich$rich)
@@ -87,91 +90,122 @@ ncolz <- 100
 zlim <- range(xyrich$rich, na.rm = TRUE)
 zseq <- seq(zlim[1], zlim[2], length.out = ncolz)
 
-pdf(file=file.path(input,'results','sp-preds-richness.pdf'),
-    width = 10,
-    height = 10)
+# get idea of how many atlases are in this set 
+replicates <- sub("^.*_", "", rownames(xyrich))
+replicates <- unique(replicates)
+replicate <- 3
+lapply(replicates,function(replicate){
+  if(replicate=='1'){year <- '1970s'}
+  if(replicate=='2'){year <- '1990s'}
+  if(replicate=='3'){year <- '2010s'}
 
-par(mar=c(10,5,5,5))
-
-# set number of species to go to 
-if(all_species==1){max_bar <- 120}else{max_bar <- nspecies}
-
-
-# PREDICTIONS 
-cols <- pal(ncolz)[as.numeric(cut(
-  xyrich$rich, 
-  breaks = seq(0, max_bar, length.out = ncolz),
-  include.lowest = T
-))]
-
-# plot the points
-plot(xyrich$X, xyrich$Y, col = cols, pch = 19,
-     xlab = 'X',
-     ylab = 'Y',
-     main = 'Model predictions - richness')
-
-# fixed legend from 0 to 12
-image.plot(legend.only = TRUE,
-           zlim = c(0, max_bar),      # force scale 0-12
-           col = pal(ncolz),
-           legend.lab = "Richness",
-           horizontal = T)
-
-# OG 
-og_cols <- pal(ncolz)[as.numeric(cut(
-  og_xyrich$rich, 
-  breaks = seq(0, max_bar, length.out = ncolz),
-  include.lowest = T
-))]
-table(is.na(og_cols))
-
-# plot the points
-plot(og_xyrich$X, og_xyrich$Y, col = og_cols, pch = 19,
-     xlab = 'X',
-     ylab = 'Y',
-     main = 'Atlas 3 - richness')
-
-# fixed legend from 0 to 12
-image.plot(legend.only = TRUE,
-           zlim = c(0, max_bar),      # force scale 0-12
-           col = pal(ncolz),
-           legend.lab = "Richness",
-           horizontal = T)
-
-# DIFFERENCE 
-# set scale bar depencing on model
-if(all_species==1){scale_bar_richness <- c(-6,6)}else{scale_bar_richness <- c(-2,2)}
-# Cap values below/above limits
-vals <- pmax(pmin(xydiff$rich, scale_bar_richness[2]), scale_bar_richness[1])
-
-diff_cols <- pal(ncolz)[as.numeric(cut(
-  vals, 
-  breaks = seq(scale_bar_richness[1], scale_bar_richness[2], length.out = ncolz),
-  include.lowest=T
-))]
-
-if (any(is.na(diff_cols))) {
-  stop("Error: There are NA values in diff_cols. Edit the scale bar")
-}
-
-if(all_species==1){
-  plot_list <- list(at = c(-6,-3,0,3,6),
-                    labels = c('< -6','-3','0','3','> 6'))
-}else{
-    plot_list <- list(at = c(-2,-1,0,1,2),
-                      labels = c('< -2','-1','0','1','> 2'))
-}
-
-plot(xydiff$X, xydiff$Y, col = diff_cols, pch = 19,
-     xlab = 'X',
-     ylab = 'Y',
-     main = 'Predictions - observed')
-image.plot(legend.only = TRUE,
-           zlim = scale_bar_richness,      # force scale 
-           col = pal(ncolz),
-           legend.lab = "Difference",
-           axis.args = plot_list,
-           horizontal = T)
-
-dev.off()
-print('spatial preds finished')
+  pdf(file=file.path(input,'results',paste0('sp-preds-richness-atlas-',replicate,'.pdf')),
+      width = 10,
+      height = 10)
+  
+  par(mar=c(10,5,5,5))
+  
+  xyrich_sub <- xyrich[rownames(xyrich)[grep(paste0("_",replicate,"$"), rownames(xyrich))],,drop=F]
+  og_xyrich_sub <- og_xyrich[rownames(og_xyrich)[grep(paste0("_",replicate,"$"), rownames(og_xyrich))],,drop=F]
+  xydiff_sub <- xydiff[rownames(xydiff)[grep(paste0("_",replicate,"$"), rownames(xydiff))],,drop=F]
+  print(head(xyrich_sub))
+  
+  # set number of species to go to 
+  if(all_species==1){max_bar <- 120}else{max_bar <- nspecies}
+  
+  
+  # PREDICTIONS 
+  cols <- pal(ncolz)[as.numeric(cut(
+    xyrich_sub$rich, 
+    breaks = seq(0, max_bar, length.out = ncolz),
+    include.lowest = T
+  ))]
+  
+  # plot the points
+  plot(xyrich_sub$X, xyrich_sub$Y, col = cols, pch = 19,
+       xlab = 'X',
+       ylab = 'Y',
+       main = 'Model predictions - richness')
+  
+  #text(800000,6250000,sum(xyrich_sub$rich))
+  
+  # fixed legend from 0 to 12
+  image.plot(legend.only = TRUE,
+             zlim = c(0, max_bar),      # force scale 0-12
+             col = pal(ncolz),
+             legend.lab = "Richness",
+             horizontal = T)
+  
+  # OG 
+  og_cols <- pal(ncolz)[as.numeric(cut(
+    og_xyrich_sub$rich, 
+    breaks = seq(0, max_bar, length.out = ncolz),
+    include.lowest = T
+  ))]
+  table(is.na(og_cols))
+  
+  # plot the points
+  plot(og_xyrich_sub$X, og_xyrich_sub$Y, col = og_cols, pch = 19,
+       xlab = 'X',
+       ylab = 'Y',
+       main = paste0('Species richness - ',year))
+  
+  # fixed legend from 0 to 12
+  image.plot(legend.only = TRUE,
+             zlim = c(0, max_bar),      # force scale 0-12
+             col = pal(ncolz),
+             legend.lab = "Richness",
+             horizontal = T)
+  
+  # DIFFERENCE 
+  # set scale bar depencing on model
+  if(all_species==1){
+    n <- 6
+    if(all_atlas == 1){
+      n <- 10
+    }
+  }else if(all_species == 0){
+    n <- 2
+    if(all_atlas == 1){
+      n <- 4
+    }
+  }
+  
+    # set scale bars and aesthetics
+  scale_bar_richness <- c(-n,n)
+  plot_list <- list(at = c(-n,-n/2,0,n/2,n),
+                    labels = c(paste0('< ',-n),
+                               paste0(-n/2),
+                               '0',
+                               paste0(n/2),
+                               paste0('> ',n)
+                               )
+  )
+                    
+  # Cap values below/above limits
+  vals <- pmax(pmin(xydiff_sub$rich, scale_bar_richness[2]), scale_bar_richness[1])
+  
+  diff_cols <- pal(ncolz)[as.numeric(cut(
+    vals, 
+    breaks = seq(scale_bar_richness[1], scale_bar_richness[2], length.out = ncolz),
+    include.lowest=T
+  ))]
+  
+  if (any(is.na(diff_cols))) {
+    stop("Error: There are NA values in diff_cols. Edit the scale bar")
+  }
+  
+  plot(xydiff_sub$X, xydiff_sub$Y, col = diff_cols, pch = 19,
+       xlab = 'X',
+       ylab = 'Y',
+       main = 'Predictions - observed')
+  image.plot(legend.only = TRUE,
+             zlim = scale_bar_richness,      # force scale 
+             col = pal(ncolz),
+             legend.lab = "Difference",
+             axis.args = plot_list,
+             horizontal = T)
+  
+  dev.off()
+  print('spatial preds finished')
+})

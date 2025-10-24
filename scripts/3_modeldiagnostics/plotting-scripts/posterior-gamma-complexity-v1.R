@@ -106,7 +106,7 @@ plotGammaSign <- function(m,
                               levels=c(1,0,-1))
   # Plot based on Sign or Mean
   plot <- ggplot(plotMatmelt, aes(x = Var1, y = Var2, fill = value)) +
-    labs(x = rowLabel, y = colLabel, fill = "Sign") +
+    labs(x = rowLabel, y = colLabel, fill = "Association") +
     geom_tile(color = 'gray60') +
     scale_fill_manual(breaks = levels(plotMatmelt$value),
                       values = cols_to_use,
