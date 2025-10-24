@@ -114,6 +114,9 @@ params <- list(
   V = mpost$V,
   sigma = mpost$Sigma
 )
+ if(taxonomy_flag == 1){
+  params$Rho <- mpost$Rho
+ }
   if(spatial_flag == 1){
     params$eta <- mpost$Eta[[1]]
     params$alpha = mpost$Alpha[[1]]
@@ -122,9 +125,6 @@ params <- list(
     params$psi = mpost$Psi[[1]]
     params$delta = mpost$Delta[[1]]
   }
- if(taxonomy_flag == 1){
-  params$Rho <- mpost$Rho
- }
  if(temporal_flag == 1){
     params$eta2 <- mpost$Eta[[2]]
     params$alpha2 = mpost$Alpha[[2]]

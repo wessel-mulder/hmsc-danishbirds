@@ -170,7 +170,6 @@ setdiff(rownames(pd_matrix),names(Y))
 
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
-atlasnr <- '1'
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 
 # loop over different atlases 
@@ -204,6 +203,7 @@ for(atlasnr in atlases){
              distr='probit')
   }
   
+  print(head(Y_sub))
   
   ### IN RSTUDIO START SAMPLING 
   if(flagFitR){
