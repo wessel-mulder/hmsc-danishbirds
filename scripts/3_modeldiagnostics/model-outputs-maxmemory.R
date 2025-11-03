@@ -13,6 +13,7 @@ post_estimates_flag <- args[8]
 taxonomy_flag <- args[9]
 spatial_flag <- args[10]
 temporal_flag <- args[11]
+pred_atlas_flag <- args[12]
 
 
 # GETTING STARTED ---------------------------------------------------------
@@ -43,6 +44,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   taxonomy_flag <- 1
   spatial_flag <- 1
   temporal_flag <- 1
+  pred_atlas_flag <- 1
   
   RStudio_flag <- 1
   
