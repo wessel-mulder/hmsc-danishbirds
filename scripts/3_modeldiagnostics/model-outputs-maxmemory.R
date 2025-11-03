@@ -24,7 +24,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(vioplot)
   library(dplyr)
   library(abind)
-  mod <- c('2025-10-23_10-36-26_threeenv_allspecies_atlas_3')
+    mod <- c('2025-10-23_10-36-26_threeenv_allspecies_atlas_1/')
   input <- file.path('./tmp_rds/mods-complexity-v2',mod)
   input_atlas123 <- file.path('./tmp_rds/mods-complexity-v2/2025-10-24_17-32-54_threeenv_allspecies_atlas_123')
   
@@ -287,6 +287,7 @@ if(pred_atlas_flag==1){
     preds_alt_atlas <- predict(fitSepTF,
                                XData = X_sub,
                                studyDesign = studyDesign_sub,
+                               ranLevels = ranLevels,
                                expected = T)
     
     if(RStudio_flag==1){
@@ -294,6 +295,7 @@ if(pred_atlas_flag==1){
     }else{
       preds_alt_atlas_sub <- preds_alt_atlas
     }
+    
     predArray = abind(preds_alt_atlas_sub, along=3)
     mean_expected <- apply(predArray,c(1,2),mean)
     
