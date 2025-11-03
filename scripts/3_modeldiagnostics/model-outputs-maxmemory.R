@@ -10,10 +10,7 @@ VP_flag <- args[5]
 pred_flag <- args[6]
 sp_pred_flag <- args[7]
 post_estimates_flag <- args[8]
-taxonomy_flag <- args[9]
-spatial_flag <- args[10]
-temporal_flag <- args[11]
-pred_atlas_flag <- args[12]
+pred_atlas_flag <- args[9]
 
 
 # GETTING STARTED ---------------------------------------------------------
@@ -41,9 +38,6 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   pred_flag <- 1
   sp_pred_flag <- 1
   post_estimates_flag <- 1
-  taxonomy_flag <- 1
-  spatial_flag <- 1
-  temporal_flag <- 1
   pred_atlas_flag <- 1
   
   RStudio_flag <- 1
@@ -72,6 +66,8 @@ if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results
 if(!dir.exists(file.path(input,'model-outputs','atlas-preds'))) {dir.create(file.path(input,'model-outputs','atlas-preds'))}
 
 
+
+
 # LOADING DATA --------------------------------------------------------
 # load unfitted object
 m <- readRDS(file.path(input,'m_object.rds'))
@@ -96,6 +92,13 @@ filteredList <- chainList
 
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 mpost <- convertToCodaObject(fitSepTF)
+
+# get flags 
+if(!is.null(fitSepTF$phyloTree)){taxonomy_flag <- 1}else{taxonomy_flag<-0}
+if(!is.null(fitSepTF$rL$site$s)){spatial_flag <- 1}else{spatial_flag<-0}
+if(!is.null(fitSepTF$rL$year)){temporal_flag <- 1}else{temporal_flag<-0}
+if(fitSepTF$ns>30){all_species <- 1}else{all_species <- 0}
+if(nrow(fitSepTF$XData)>5000){all_atlas <- 1}else{all_atlas <- 0}
 
 print('model succesfully loaded')
 # PSRF / ESS  ----------------------------------------------------
