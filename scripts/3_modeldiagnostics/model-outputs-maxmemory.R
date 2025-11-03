@@ -239,13 +239,15 @@ if(pred_atlas_flag==1){
   ### LOAD OTHER ATLAS 
   ###
   m_atlas123 <- readRDS(file.path(input_atlas123,'m_object.rds'))
+  print(m_atlas123)
   # load params 
   params_atlas123 <- readRDS(file.path(input_atlas123,'params.rds'))
-  nChains_atlas123 <- params$nChains
-  nSamples_atlas123 <- params$nSamples
-  thin_atlas123 <- params$thin
-  transient_atlas123 <- params$transient
+  nChains_atlas123 <- params_atlas123$nChains
+  nSamples_atlas123 <- params_atlas123$nSamples
+  thin_atlas123 <- params_atlas123$thin
+  transient_atlas123 <- params_atlas123$transient
   
+
   chainList_atlas123 = vector("list", nChains_atlas123)
   for(cInd in 1:nChains_atlas123){
     chain_file_path_atlas123 = file.path(input_atlas123, sprintf("post_chain%.2d_file.rds", cInd-1))
@@ -291,7 +293,6 @@ if(pred_atlas_flag==1){
       preds_alt_atlas_sub <- preds_alt_atlas[1:2]
     }else{
       preds_alt_atlas_sub <- preds_alt_atlas
-      
     }
     predArray = abind(preds_alt_atlas_sub, along=3)
     mean_expected <- apply(predArray,c(1,2),mean)
