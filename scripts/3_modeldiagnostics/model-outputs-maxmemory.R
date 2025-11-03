@@ -26,17 +26,25 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(vioplot)
   library(dplyr)
   library(abind)
-  mod <- '2025-09-29_20-30-44_singleev_tmean_year_knots_212'
-  input <- file.path('./tmp_rds/mods-complexity',mod)
+  mod <- c('2025-10-23_10-36-26_threeenv_allspecies_atlas_3')
+  input <- file.path('./tmp_rds/mods-complexity-v2',mod)
+  input_atlas123 <- file.path('./tmp_rds/mods-complexity-v2/2025-10-24_17-32-54_threeenv_allspecies_atlas_123')
+  
   source_path <- file.path('./scripts/3_modeldiagnostics/plotting-scripts')
   # other flags
+  n_cores <- 1
+  
   psrfess_flag <- 1
   fit_flag <- 1
   VP_flag <- 1
   pred_flag <- 1
   sp_pred_flag <- 1
   post_estimates_flag <- 1
-  n_cores <-4
+  taxonomy_flag <- 1
+  spatial_flag <- 1
+  temporal_flag <- 1
+  
+  RStudio_flag <- 1
   
 } else {
   message("Running from terminal or non-interactive environment")
@@ -52,12 +60,14 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(abind,lib="~/Rlibs")
   
   input <- file.path('~/home/projects/hmsc-danishbirds/tmp_rds',mod)
+  input_atlas123 <- file.path('~/home/projects/hmsc-danishbirds/tmp_rds/2025-10-24_17-32-54_threeenv_allspecies_atlas_123')
   source_path <- file.path('~/home/projects/hmsc-danishbirds/scripts/3_modeldiagnostics/plotting-scripts')
   
 }
 # make dir for outputs 
 if(!dir.exists(file.path(input,'model-outputs'))) {dir.create(file.path(input,'model-outputs'))}
 if(!dir.exists(file.path(input,'results'))) {dir.create(file.path(input,'results'))}
+if(!dir.exists(file.path(input,'model-outputs','atlas-preds'))) {dir.create(file.path(input,'model-outputs','atlas-preds'))}
 
 
 # LOADING DATA --------------------------------------------------------
@@ -70,8 +80,6 @@ nChains <- params$nChains
 nSamples <- params$nSamples
 thin <- params$thin
 transient <- params$transient
-
-
 
 chainList = vector("list", nChains)
 for(cInd in 1:nChains){
@@ -86,7 +94,6 @@ filteredList <- chainList
 
 fitSepTF = importPosteriorFromHPC(m, filteredList, nSamples, thin, transient)
 mpost <- convertToCodaObject(fitSepTF)
-
 
 print('model succesfully loaded')
 # PSRF / ESS  ----------------------------------------------------
@@ -190,51 +197,6 @@ print('model fit succesfully saved')
 }else{
   print('model fit skipped')
 }
-# ### CHUNKY
-# chunk_size <- 10
-# 
-# # get postlist
-# postlist <- poolMcmcChains(fitSepTF$postList)
-# idx_chunks[1]
-# summary(postlist[idx_chunks[[2]]])
-# postlist[[2]]
-# 
-# length_pl <- length(postlist)
-# 
-# # get chunks
-# idx_chunks <- split(1:length_pl, ceiling(seq_along(1:length_pl)/chunk_size))
-# 
-# # parallelize
-# idx_chunks <- idx_chunks[1:2]
-# 
-# preds_chunk <- parallel::mclapply(idx_chunks, function(chunk) {
-#   sub_postlist <- postlist[chunk]
-#   predict(fitSepTF,sub_postlist)
-# }, mc.cores = 4)  # adjust cores to liking
-# 
-# abind(preds_chunk,along=3)
-# 
-# MF <- evaluateModelFit(hM=fitSepTF, predY=preds)
-# ns = dim(fitSepTF$Y)[2]
-# RMSE = rep(NA,ns)
-# for (i in 1:ns){
-#   RMSE[i] = sqrt(mean((fitSepTF$Y[,i]-preds[,i])^2, na.rm=TRUE))
-# }
-# 
-# median2 = function(x){return (median(x,na.rm=TRUE))}
-# mean2 = function(x){return (mean(x,na.rm=TRUE))}
-# 
-# mPredY = matrix(NA, nrow=fitSepTF$ny, ncol=fitSepTF$ns)
-# sel = fitSepTF$distr[,1]==3
-# if (sum(sel)>0){
-#   mPredY[,sel] = as.matrix(apply(abind(preds[,sel,,drop=FALSE], along=3),
-#                                  c(1,2), median2))
-# }
-# sel = !fitSepTF$distr[,1]==3
-# if (sum(sel)>0){
-#   mPredY[,sel] = as.matrix(apply(abind(preds[,sel,,drop=FALSE], along=3),
-#                                  c(1,2), mean2))
-# }
 
 
 # VP ----------------------------------------------------------------
@@ -264,6 +226,84 @@ if(post_estimates_flag==1){
   print('posteriors skipped')
 }
 
+
+# PRED - OTHER ATLAS ------------------------------------------------------
+if(pred_atlas_flag==1){
+  
+  ### 
+  ### LOAD OTHER ATLAS 
+  ###
+  m_atlas123 <- readRDS(file.path(input_atlas123,'m_object.rds'))
+  # load params 
+  params_atlas123 <- readRDS(file.path(input_atlas123,'params.rds'))
+  nChains_atlas123 <- params$nChains
+  nSamples_atlas123 <- params$nSamples
+  thin_atlas123 <- params$thin
+  transient_atlas123 <- params$transient
+  
+  chainList_atlas123 = vector("list", nChains_atlas123)
+  for(cInd in 1:nChains_atlas123){
+    chain_file_path_atlas123 = file.path(input_atlas123, sprintf("post_chain%.2d_file.rds", cInd-1))
+    print(chain_file_path_atlas123)
+    if(file.exists(chain_file_path_atlas123)) {
+      chainList_atlas123[[cInd]] = from_json(readRDS(file = chain_file_path_atlas123)[[1]])[[1]]
+    }
+  }
+  
+  filteredList_atlas123 <- chainList_atlas123
+  
+  fitSepTF_atlas123 = importPosteriorFromHPC(m_atlas123, filteredList_atlas123, nSamples_atlas123, thin_atlas123, transient_atlas123)
+  mpost_atlas123 <- convertToCodaObject(fitSepTF_atlas123)
+  print('model atlas123 succesfully loaded')
+  
+  ###
+  ### LOAD WORKING MODEL 
+  ###
+  Y <- fitSepTF_atlas123$Y
+  X <- fitSepTF_atlas123$XData
+  studyDesign <- fitSepTF_atlas123$studyDesign
+  ranLevels <- fitSepTF_atlas123$ranLevels
+  
+  # which atlases are in this model? 
+  replicates <- unique(sub("^.*_", "", rownames(fitSepTF$XData)))
+  # which atlases are not in this set?
+  atlases_to_predict <- setdiff(c('1','2','3'),replicates)
+  
+  if(!length(atlases_to_predict)){
+    print('there are not predictions to be made in "other" atlases')
+  }else{
+    pattern <- paste0("_(", paste(atlases_to_predict, collapse = "|"), ")$")
+    Y_sub <- Y[rownames(Y)[grep(pattern, rownames(Y))],,drop=F]
+    X_sub <- X[rownames(X)[grep(pattern, rownames(X))],,drop=F]
+    studyDesign_sub <- studyDesign[rownames(studyDesign)[grep(pattern, rownames(studyDesign))],,drop=F]
+    
+    preds_alt_atlas <- predict(fitSepTF,
+                               XData = X_sub,
+                               studyDesign = studyDesign_sub,
+                               expected = T)
+    
+    if(RStudio_flag==1){
+      preds_alt_atlas_sub <- preds_alt_atlas[1:2]
+    }else{
+      preds_alt_atlas_sub <- preds_alt_atlas
+      
+    }
+    predArray = abind(preds_alt_atlas_sub, along=3)
+    mean_expected <- apply(predArray,c(1,2),mean)
+    
+    saveRDS(mean_expected,
+            file=file.path(input,'model-outputs','atlas-preds','pred-Y.rds'))
+    saveRDS(Y_sub,
+            file=file.path(input,'model-outputs','atlas-preds','true-Y.rds'))
+    
+  }
+  
+
+}else{
+  print('skipping atlas predictions')
+}
+
+
 # TEST A PREDICTION -------------------------------------------------------
 if(pred_flag==1){
 
@@ -288,6 +328,7 @@ print('predictions succesfully saved')
 }else{
   print('predictions skipped')
 }
+
 
 
 

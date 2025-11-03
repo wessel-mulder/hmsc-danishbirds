@@ -15,7 +15,7 @@ post_estimates_flag <- 1
 #dirs <- dirs[11]
 for(dir in seq_along(dirs)){
   print(dir)
- if(grepl('threeenv_allspecies',dirs[dir])){
+ if(grepl('threeenv_allspecies_atlas_3',dirs[dir])){
 
  #   print('T')
     inaloop <- T
@@ -275,8 +275,6 @@ if(chains_flag == 1){
  } # if statement (to find dirs)
   
 } # dirs loop
-
-
 
 # # OTHER STUFF -------------------------------------------------------------
 # 
