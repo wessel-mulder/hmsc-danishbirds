@@ -1,0 +1,157 @@
+---
+  title: "Differences between community models"
+subtitle: "Atlas 1, Atlas 2 and Atlas 3"
+author: Wessel Mulder 
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+  margin:
+  ---
+  ```{r setup, include=FALSE}
+# Global chunk options
+knitr::opts_chunk$set(
+  echo = FALSE,
+  fig.align = "center",
+  fig.height = 5,
+  fig.width = 7,
+  message = FALSE,
+  warning = FALSE
+)
+```
+
+```{r}
+input <- '.'
+env_vars <- 'all'
+library(sf)
+
+
+X <- read.csv(file.path(input,'data/1_preprocessing/X_environmental/X_Environmental.csv'),row.names=1)
+X <- X[sort(row.names(X)),]
+
+# get ocean thresholds
+grids_thresholds <- st_read(file.path(input,'data/1_preprocessing/atlas-grids/grids-ocean-thresholds/grids_ocean_thresholds.shp'))
+thresholds <- grids_thresholds$kvdrtkd[grids_thresholds$pct_lnd>=25]
+
+X <- X[sub("_[123]$", "", rownames(X)) %in% thresholds,]
+# any NAs?
+table(is.na(X))
+if(!env_vars=='all'){X <- X[,env_vars,drop=F]}
+table(is.na(X)) # still som NAs
+X <- na.omit(X)
+table(is.na(X)) # fixed
+
+# grab tmean_year
+sites_actual <- row.names(X)
+
+### OCCURRENCES 
+Y <- read.csv(file.path(input,'data/1_preprocessing/Y_occurrences/Y_occurrences.csv'),row.names=1)
+
+# remove sites without data 
+Y <- Y[row.names(Y) %in% sites_actual,]
+
+for(number in c('1','2','3')){
+  Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
+  if(any(colSums(Y_sub, na.rm =T)<5)){
+    print(paste0('In atlas ',number,' these species: '))
+    print(names(which(colSums(Y_sub, na.rm =T)<5)))
+    tofilter <- names(which(colSums(Y_sub, na.rm =T)<5))
+    print('have less than 5 occurrences')
+    Y <- Y[, !(colnames(Y) %in% tofilter)]
+    print('and are now filtered ')
+  }
+}
+
+for(number in c('1','2','3')){
+  Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
+  if(any(colSums(Y_sub, na.rm =T)<5)){
+    print(paste0('In atlas ',number,' these species: '))
+    print(names(which(colSums(Y_sub, na.rm =T)<5)))
+    tofilter <- names(which(colSums(Y_sub, na.rm =T)<5))
+    print('have less than 5 occurrences')
+    stop('stop')
+  }
+}
+
+Tr <- read.csv(file.path(input,"data/1_preprocessing/Tr_aits/traits-guild_migration.csv"),row.names = 2)[,c(2,3)]
+# sort by Y
+Tr <- Tr[colnames(Y), , drop = FALSE]
+
+merged_landuse <- merge_by_rownames(X,Y)
+merged_landuse$atlas <- sapply(strsplit(row.names(merged_landuse),'_'),function(x) x[2])
+
+
+specie <- 'Picus_viridis'
+species_eng <- 'Greenwoodpecker'
+species <- colnames(Y)
+means_species <- do.call(rbind,lapply(species,function(specie){
+  
+  subs <- c('atlas','tmean_year','prec_year',specie)
+  subs <- merged_landuse[,colnames(merged_landuse) %in% subs]
+  
+  colnames(subs) <- c('Temperature','Precipitation',
+                      'PresenceAbsence','Atlas')
+  
+  subs$PresenceAbsence <- as.character(subs$PresenceAbsence)
+  subs$Atlas <- as.factor(subs$Atlas)
+  
+  combination <- c('Temperature','Precipitation')
+  atlases <- c(1,2,3)
+  library(rethinking)
+  means_atlases <- do.call(rbind,lapply(atlases,function(atlas){
+    
+    
+    means_long <- do.call(rbind, lapply(combination, function(combi) {
+      subs$Temperature_scaled <- standardize(subs$Temperature)
+      subs$Precipitation_scaled <- standardize(subs$Precipitation)
+      
+      if(combi == 'Temperature'){variable <- 'Temperature_scaled'}
+      if(combi == 'Precipitation'){variable <- 'Precipitation_scaled'}
+      
+      
+      bg <- mean(subs[subs$Atlas == atlas, variable])
+      presence <- mean(subs[subs$Atlas == atlas & subs$PresenceAbsence == 1,variable])
+      
+      data.frame(
+        variable = combi,
+        type = c("bg", "presence"),
+        mean_value = c(bg, presence),
+        atlas = atlas,
+        species = specie
+      )
+    })) ## variables list 
+  })) ## atlas list
+})) ## species list
+str(means_species)
+str(means_species)
+str(Tr)
+Tr$species <- rownames(Tr)
+means_species$Guild <- Tr$foraging_guild_consensus[match(means_species$species, Tr$species)]
+
+library(tidyr)
+diff_means <- means_species %>%
+  pivot_wider(
+    names_from = type,
+    values_from = mean_value
+  ) %>%
+  mutate(
+    diff = presence - bg
+  )
+
+diff_means$atlas <- as.factor(diff_means$atlas)
+diff_means$Guild <- as.factor(diff_means$Guild)
+
+guilds <- unique(diff_means$Guild)
+guild <- 'Terns'
+lapply(guilds,function(guild){
+  ggplot(data=diff_means[diff_means$Guild==guild,],
+         aes(x=atlas,
+             y=diff))+
+    geom_boxplot(notch=T)+
+    facet_grid(~variable)+
+    geom_hline(yintercept=0)
+})
+
+
+
+```
+

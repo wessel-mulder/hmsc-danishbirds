@@ -1,0 +1,263 @@
+---
+title: "Sanity checks - atlas 1970s"
+author: "WM"
+date: "`r Sys.Date()`"
+output: pdf_document
+
+---
+
+```{r setup, include=FALSE}
+# Global chunk options
+knitr::opts_chunk$set(
+  echo = FALSE,
+  fig.align = "center",
+  fig.height = 5,
+  fig.width = 7,
+  message = FALSE,
+  warning = FALSE
+)
+
+library(sf)
+library(terra)
+library(ggplot2)
+```
+
+```{r helper-functions,include=FALSE}
+### HELPER FUNCTIONS 
+abbreviate_genus <- function(x) {
+  sapply(x, function(nm) {
+    parts <- unlist(strsplit(nm, "_"))  # split by underscore
+    paste0(substr(parts[1], 1, 1), ". ", parts[2])
+  })
+}
+
+merge_by_rownames <- function(x,y) {
+  merge <- merge(x,y,by='row.names')
+  rownames(merge) <- merge$Row.names
+  merge[,!colnames(merge) %in% c('Row.names')]
+}
+```
+
+
+# Sanity checks for Atlas 1970s
+So as we've seen from the model outputs, something's up with the model from the 1970s. For some reason, there is no signal of the environment (temperature, precipitation, heterogeneity) whatsoever, while we do find those signals in later atlases. To try and figure out what's up, I'm looking at the original data input for the models:
+
+- changes in communities between atlases 
+- changes in environmental values between atlases 
+- species data (comparing mine to the birdlife denmark database)
+- environmental data (comparing to atlas 90s and 2010s)
+
+This is all to try and flag whether something's up with the data 
+
+## Changes in communities between atlases
+
+The plot on the next page gives an idea of the total grid-level richness across the atlas surveys. You see that the distributions are pretty similar, but through time the atlases tend to increase in grid-level richness. 
+
+```{r include=FALSE}
+input <- '.'
+env_vars <- 'all'
+### GETTING X 
+X <- read.csv(file.path(input,'data/1_preprocessing/X_environmental/X_Environmental.csv'),row.names=1)
+
+X <- X[sort(row.names(X)),]
+
+# get ocean thresholds
+grids_thresholds <- st_read(file.path(input,'data/1_preprocessing/atlas-grids/grids-ocean-thresholds/grids_ocean_thresholds.shp'))
+thresholds <- grids_thresholds$kvdrtkd[grids_thresholds$pct_lnd>=25]
+
+X <- X[sub("_[123]$", "", rownames(X)) %in% thresholds,]
+# any NAs?
+table(is.na(X))
+if(!env_vars=='all'){X <- X[,env_vars,drop=F]}
+table(is.na(X)) # still som NAs
+X <- na.omit(X)
+table(is.na(X)) # fixed
+
+# grab tmean_year
+sites_actual <- row.names(X)
+
+### OCCURRENCES 
+Y <- read.csv(file.path(input,'data/1_preprocessing/Y_occurrences/Y_occurrences.csv'),row.names=1)
+
+# remove sites without data 
+Y <- Y[row.names(Y) %in% sites_actual,]
+
+for(number in c('1','2','3')){
+  Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
+  if(any(colSums(Y_sub, na.rm =T)<5)){
+    print(paste0('In atlas ',number,' these species: '))
+    print(names(which(colSums(Y_sub, na.rm =T)<5)))
+    tofilter <- names(which(colSums(Y_sub, na.rm =T)<5))
+    print('have less than 5 occurrences')
+    Y <- Y[, !(colnames(Y) %in% tofilter)]
+    print('and are now filtered ')
+  }
+}
+
+for(number in c('1','2','3')){
+  Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
+  if(any(colSums(Y_sub, na.rm =T)<5)){
+    print(paste0('In atlas ',number,' these species: '))
+    print(names(which(colSums(Y_sub, na.rm =T)<5)))
+    tofilter <- names(which(colSums(Y_sub, na.rm =T)<5))
+    print('have less than 5 occurrences')
+    stop('stop')
+  }
+}
+
+ncol(Y)
+Y$rich <- rowSums(Y)
+
+# --> LOAD STUDY DESIGN 
+Design <- read.csv(file.path(input,"data/1_preprocessing/design/studyDesign.csv"),row.names=5)
+
+# remove sites without data 
+Design <- Design[row.names(Design) %in% sites_actual,]
+
+# sort
+Design <- Design[sort(row.names(Design)), ]
+
+# convert to factors
+Design$site <- as.factor(Design$site)
+Design$atlas <- as.factor(Design$atlas)
+Design$year[Design$atlas == '1'] <- 1971
+Design$year[Design$atlas == '2'] <- 1992
+Design$year[Design$atlas == '3'] <- 2014
+Design$years[Design$atlas == '1'] <- '1970s'
+Design$years[Design$atlas == '2'] <- '1990s'
+Design$years[Design$atlas == '3'] <- '2010s'
+
+xycoords <- data.frame(lon = Design$lon, lat = Design$lat)
+#rownames(xycoords) <- Design3$site
+
+v <- vect(xycoords, geom = c("lon","lat"), crs = "EPSG:4326")
+v_proj <- project(v, "EPSG:23032")
+
+proj_xycoords <- crds(v_proj)
+Design$X <- proj_xycoords[,1]
+Design$Y <- proj_xycoords[,2]
+# plot 
+plot(Design$Y~Design$X)
+```
+
+```{r include=T}
+design_rich <- merge_by_rownames(Design,Y['rich'])
+atlas_cols <- c('coral','lightgreen','lightblue')
+library(ggplot2)
+ggplot(data=design_rich,
+       aes(x=years,y=rich,fill=years))+
+  geom_boxplot()+
+  scale_fill_manual(values=atlas_cols) +
+  labs(x = 'Atlas survey',
+       y = 'Grid-level species richness',
+       title = 'Richness in each atlas-grid across Atlas surveys',
+       fill = 'Years') +
+  theme_classic()
+```
+
+## richness difference 
+The next step I'm looking at the differences in richness between atlases, to see if there are any weird jumps in species richness
+
+
+## k - means Clustering 
+```{r eval=FALSE, include=FALSE}
+library(vegan)
+library(dplyr)
+lapply(c(1,2,3),function(x){
+  
+clust <- Y %>%
+  select(-rich) %>% # get columns
+  tibble::rownames_to_column("site") %>% # get atlas 1
+  dplyr::filter(grepl(paste0("_",x,"$"), site)) %>%
+  tibble::column_to_rownames("site") %>% 
+  kmeans(centers=3) %>% 
+  { df <- data.frame(cluster = .$cluster)
+    rownames(df) <- names(.$cluster)
+    df } %>%
+  # join with design dataframe
+  merge_by_rownames(Design)
+
+library(ggplot2)
+
+ggplot(clust, aes(x = X, y = Y, color = factor(cluster))) +
+  geom_point(size = 3, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1", name = "Cluster") +
+  theme_minimal() +
+  labs(x = "X coordinate", y = "Y coordinate") +
+  theme(
+    legend.position = "right",
+    text = element_text(size = 12)
+  )
+})
+
+
+
+```
+
+## species Clustering 
+```{r include = F}
+library(vegan)
+library(dplyr)
+library(ggdendro)
+x<-1
+k<-2
+
+dist <- Y %>%
+  select(-rich) %>% # get columns
+  tibble::rownames_to_column("site") %>% # get atlas 1
+  dplyr::filter(grepl(paste0("_1$"), site)) %>% 
+  tibble::column_to_rownames("site") %>% 
+  
+  #rename_with(~abbreviate_genus(.x)) %>% 
+  
+  decostand(,method='hellinger') %>% 
+  t() %>% # transpose
+  vegdist(,method="bray")
+
+clus_ward <- dist %>% 
+  hclust(,method='ward.D2') 
+clus_ward_cut <- cutree(clus_ward,k=k)
+
+# clustered
+Y_clustered <- Y %>%
+  select(-rich) %>% 
+  mutate(across(all_of(names(clus_ward_cut)), 
+                ~ ifelse(. == 1, clus_ward_cut[cur_column()], 0)))
+
+# Count how many species of each cluster occur in each site
+site_cluster_counts <- sapply(1:k, function(i) {
+  rowSums(Y_clustered == i)
+})
+
+colnames(site_cluster_counts) <- paste0("Cluster_", 1:k)
+dominant_cluster <- apply(site_cluster_counts, 1, which.max)
+
+cluster_df <- data.frame(cluster = dominant_cluster)
+rownames(cluster_df) <- names(dominant_cluster)
+
+cluster_design <- merge_by_rownames(Design,cluster_df)
+atlas <- 1
+lapply(c(1,2,3),function(atlas){
+
+ggplot(cluster_design[cluster_design$atlas==atlas,], 
+       aes(x = X, y = Y, color = factor(cluster))) +
+  geom_point(size = 3, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1", name = "Cluster") +
+  theme_minimal() +
+  labs(x = "X coordinate", y = "Y coordinate") +
+  theme(
+    legend.position = "right",
+    text = element_text(size = 12)
+  )
+})
+  
+```
+
+
+
+
+
+
+
+
+
