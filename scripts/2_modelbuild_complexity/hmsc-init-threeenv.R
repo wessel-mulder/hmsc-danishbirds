@@ -196,12 +196,8 @@ for(atlasnr in atlases){
   proj_xycoords_unique <- distinct(data.frame(X = Design$lon,
                                               Y = Design$lat))
   rownames(proj_xycoords_unique) <- unique(Design$site) 
+  struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "Full")
 
-  # make knots 
-  xyKnots <- proj_xycoords_unique + 1
-  struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "GPP",
-                                 sKnot = xyKnots)
-  
   # keep only atlas 1,2,3 
   pattern <- paste0("_(", paste(atlasnr, collapse = "|"), ")$")
   
@@ -267,7 +263,7 @@ for(atlasnr in atlases){
                            verbose = verbose,
                            engine="HPC")
     
-    dir_name <- paste0(date,'_threeenv_allspecies_sneakyknots_atlas_',  paste(atlasnr, collapse = ""))
+    dir_name <- paste0(date,'_threeenv_allspecies_landusepercs_atlas_',  paste(atlasnr, collapse = ""))
     dir.create(file.path(input,'tmp_rds',dir_name))
     
     init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
