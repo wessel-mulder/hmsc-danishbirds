@@ -1,9 +1,7 @@
 rm(list = ls())
 
 # Define MCMC settings
-env_vars <- c('tmean_year','prec_year',
-              'perc_fresh_saltwater','perc_urban','perc_cropland',
-              'perc_pasture','perc_forest','perc_grass_shrub')
+env_vars <- c('tmean_year','prec_year','dominant')
 chars <- c('all')
 atlases <- c('1','2','3')
 
@@ -69,7 +67,20 @@ X <- X[sort(row.names(X)),]
 names <- c('ocean','urban','cropland','pasture','forest','grass_shrub','other','water')
 X <- X %>%
   rename_with(.cols = contains('LULC'), .fn = ~paste0('perc_',names)) %>%  # rename land-use columns
-  mutate(perc_fresh_saltwater = perc_water + perc_ocean)
+  mutate(perc_fresh_saltwater = perc_water + perc_ocean) %>% 
+  select(-c(perc_other,perc_ocean,perc_water)) %>% 
+  mutate(
+    dominant = factor(
+      names(select(., starts_with("perc_")))[
+      max.col(select(., starts_with("perc_")), ties.method = "first")
+    ]
+    )
+  )
+
+# library(ggplot2)
+# ggplot(data=X,
+#        aes(x=dominant)) +
+#   geom_histogram(position='identity',stat='count')
 
 # get ocean thresholds
 grids_thresholds <- st_read(file.path(input,'data/1_preprocessing/atlas-grids/grids-ocean-thresholds/grids_ocean_thresholds.shp'))
