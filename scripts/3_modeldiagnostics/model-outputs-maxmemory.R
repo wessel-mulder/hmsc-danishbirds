@@ -24,7 +24,7 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   library(vioplot)
   library(dplyr)
   library(abind)
-    mod <- c('2025-10-23_10-36-26_threeenv_allspecies_atlas_1/')
+  mod <- c('2025-10-23_10-36-26_threeenv_allspecies_atlas_1/')
   input <- file.path('./tmp_rds/mods-complexity-v2',mod)
   input_atlas123 <- file.path('./tmp_rds/mods-complexity-v2/2025-10-24_17-32-54_threeenv_allspecies_atlas_123')
   
@@ -59,6 +59,8 @@ if (interactive() && Sys.getenv("RSTUDIO") == "1") {
   input_atlas123 <- file.path('~/home/projects/hmsc-danishbirds/tmp_rds/2025-10-24_17-32-54_threeenv_allspecies_atlas_123')
   source_path <- file.path('~/home/projects/hmsc-danishbirds/scripts/3_modeldiagnostics/plotting-scripts')
   
+  RStudio_flag <- 0
+
 }
 # make dir for outputs 
 if(!dir.exists(file.path(input,'model-outputs'))) {dir.create(file.path(input,'model-outputs'))}
