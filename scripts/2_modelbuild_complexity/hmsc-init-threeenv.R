@@ -1,11 +1,11 @@
 rm(list = ls())
 
 # Define MCMC settings
-env_vars <- c('tmean_year','prec_year','hh')
+env_vars <- c('tmean_year','prec_year',
+              'perc_fresh_saltwater','perc_urban','perc_cropland',
+              'perc_pasture','perc_forest','perc_grass_shrub')
 chars <- c('all')
-atlases <- list(
-                c('3')
-)
+atlases <- c('1','2','3')
 
 nChains <- 4
 thin <- 10
@@ -65,6 +65,11 @@ summary(TD)
 ### ENVIRONMENT
 X <- read.csv(file.path(input,'data/1_preprocessing/X_environmental/X_Environmental.csv'),row.names=1)
 X <- X[sort(row.names(X)),]
+# rename 
+names <- c('ocean','urban','cropland','pasture','forest','grass_shrub','other','water')
+X <- X %>%
+  rename_with(.cols = contains('LULC'), .fn = ~paste0('perc_',names)) %>%  # rename land-use columns
+  mutate(perc_fresh_saltwater = perc_water + perc_ocean)
 
 # get ocean thresholds
 grids_thresholds <- st_read(file.path(input,'data/1_preprocessing/atlas-grids/grids-ocean-thresholds/grids_ocean_thresholds.shp'))
@@ -170,13 +175,18 @@ pd_matrix
 setdiff(rownames(pd_matrix),names(Y))
 # stunning 
 
+
+# TAKE A LOOK AT LANDUSE VARS -------------------------------------------------
+
+
 # PREPARING MODEL BUILD ---------------------------------------------------
 # Define model types: 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 
-atlasnr <- c('1','2')
+atlasnr <- c('1')
 # loop over different atlases 
 for(atlasnr in atlases){
+
   ### SAME ACROSS ALL MODELS
   # Define model formulas for environmental and trait data
   XFormula <- as.formula(paste("~", paste(colnames(X), collapse = "+"), sep = " "))
@@ -201,6 +211,20 @@ for(atlasnr in atlases){
   Design_sub$atlas <- droplevels(Design_sub$atlas)
   #Design_sub <- Design_sub[,c('site','year'),drop=F]
   
+  # if it's just 1 atlas 
+  if(length(atlasnr)==1){
+    
+    m <-Hmsc(Y = Y_sub, 
+             XData = X_sub,
+             XFormula = XFormula,
+             TrData = Tr,
+             TrFormula = TrFormula,
+             phyloTree = phy,
+             studyDesign = Design_sub[,c('site'),drop=F], 
+             ranLevels = list('site'=struc_space),
+             distr='probit')
+    
+  }else{
   # and time
   years_unique <- distinct(data.frame(Year = Design_sub$year))
   rownames(years_unique) <- unique(Design_sub$atlas) 
@@ -216,7 +240,7 @@ for(atlasnr in atlases){
            ranLevels = list('site'=struc_space,
                             'atlas'=struc_time),
            distr='probit')
-  
+  }
   
   print(head(Y_sub[,1:5]))
   print(tail(Y_sub[,1:5]))

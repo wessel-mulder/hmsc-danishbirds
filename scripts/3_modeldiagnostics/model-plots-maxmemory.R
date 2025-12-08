@@ -5,19 +5,19 @@ between <- 'mods-complexity-v2'
 dirs <- list.dirs(file.path('./tmp_rds',between),recursive=F)
 inaloop <- F
 
-psrfess_flag <- 1
-fit_flag <- 1
-VP_flag <- 1
+psrfess_flag <- 0
+fit_flag <- 0
+VP_flag <- 0
 pred_flag <- 1
-chains_flag <- 1
-post_estimates_flag <- 1
+chains_flag <- 0
+post_estimates_flag <- 0
 
 #dirs <- dirs[11]
 for(dir in seq_along(dirs)){
   print(dir)
- if(grepl('threeenv_allspecies_atlas_3',dirs[dir])){
+ if(grepl('threeenv_allspecies_atlas_23',dirs[dir])){
 
- #   print('T')
+   #   print('T')
     inaloop <- T
 
 # GETTING STARTED ---------------------------------------------------------
@@ -157,6 +157,23 @@ if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
 
 }
 }
+
+# SPATIAL PREDICTIONS  ----------------------------------------------------
+if(pred_flag == 1){
+  print('starting spatial preds ')
+  preds <- readRDS(file.path(input,'model-outputs','pred-vals.rds'))
+  #print(head(preds))
+  if(between %in% c('mods-complexity-v1','mods-complexity-v2')){
+    source(file.path(source_path,'spatial-preds-complexity-v1.R'))
+    source(file.path(source_path,'spatial-preds-species-complexity-v1.R'))
+  }else{
+    
+  }
+}
+  
+
+
+
 
 # POSTERIOR ESTIMATES  ----------------------------------------------------
 if(post_estimates_flag == 1){

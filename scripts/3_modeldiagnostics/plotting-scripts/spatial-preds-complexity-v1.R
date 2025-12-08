@@ -1,5 +1,3 @@
-
-
 # ORIGINAL DATA  ----------------------------------------------------------
 # get environment and basic info
 grid <- fitSepTF$XData
@@ -10,7 +8,7 @@ nspecies <- ncol(preds)
 design <- fitSepTF$studyDesign
 if(is.null(design)){
   # get design from a different model 
-  temp_fitsep <- readRDS('tmp_rds/mods-complexity-v2/2025-10-14_16-33-15_threeenv_full/fitsepTF.rds')
+  temp_fitsep <- readRDS('tmp_rds/mods-complexity-v2/spatial-tests/2025-10-14_16-33-15_threeenv_full/fitsepTF.rds')
   design <- temp_fitsep$studyDesign
   
   xycoords <- tryCatch(
@@ -69,6 +67,7 @@ max(xyrich$rich)
 
 # DIFFERENCE  -------------------------------------------------------------
 diff <- S - og_S
+
 head(S)
 head(og_S)
 xydiff <- merge(merge,diff,by='row.names')
@@ -209,3 +208,67 @@ lapply(replicates,function(replicate){
   dev.off()
   print('spatial preds finished')
 })
+
+
+
+# PREDICTIONS OTHER ATLASES  ----------------------------------------------
+if(dir.exists(file.path(input,'model-outputs','atlas-preds'))){
+  files <- list.files(file.path(input,'model-outputs','atlas-preds'))
+  if(!is.null(files)){
+    preds <- readRDS(file.path(input,'model-outputs','atlas-preds','pred-Y.rds'))
+    true <- readRDS(file.path(input,'model-outputs','atlas-preds','true-Y.rds'))
+
+    S = data.frame(rich = rowSums(preds))
+    S_true = data.frame(rich = rowSums(true))
+    head(S)
+    head(S_true)
+    predstrue <- merge(S,S_true,by='row.names')
+    predstrue$diff <- predstrue$rich.x-predstrue$rich.y
+    head(predstrue$Row.names)
+    predstrue$site <- sub("_[123]$", "", predstrue$Row.names)    
+    head(predstrue$site)
+    merged <- merge(merge,predstrue,by='site')
+    
+    # Cap values below/above limits
+    vals <- pmax(pmin(merged$diff, scale_bar_richness[2]), scale_bar_richness[1])
+    
+    diff_cols <- pal(ncolz)[as.numeric(cut(
+      vals, 
+      breaks = seq(scale_bar_richness[1], scale_bar_richness[2], length.out = ncolz),
+      include.lowest=T
+    ))]
+    
+    if (any(is.na(diff_cols))) {
+      stop("Error: There are NA values in diff_cols. Edit the scale bar")
+    }
+    
+    plot(merged$X, merged$Y, col = diff_cols, pch = 19,
+         xlab = 'X',
+         ylab = 'Y',
+         main = 'Predictions - observed')
+    image.plot(legend.only = TRUE,
+               zlim = scale_bar_richness,      # force scale 
+               col = pal(ncolz),
+               legend.lab = "Difference",
+               axis.args = plot_list,
+               horizontal = T)
+    
+    
+    
+    # get idea of atlases that are in here
+    replicates <- unique(sub("^.*_", "", rownames(diff)))
+    lapply(replicates,function(replicate){
+      pdf(file=file.path(input,'results',paste0('sp-preds-richness-otheratlas-',replicate,'.pdf')),
+          width = 10,
+          height = 10)
+      
+      diff_sub <- diff[rownames(diff)[grep(paste0("_",replicate,"$"), rownames(diff))],,drop=F]
+      
+      
+    }
+    )
+    
+    
+  }
+}
+

@@ -84,8 +84,6 @@ for (r in guilds_row) {
     # Extract all values for this guild-guild pair
     vals <- toPlotTraits[rownames(toPlotTraits) == r, colnames(toPlotTraits) == c]
     vals_uptri <- vals[upper.tri(vals)]
-    print(paste0(r,c))
-    print(vals_uptri)
     collapsed[r, c] <- mean(vals_uptri, na.rm = TRUE)
   }
 }
