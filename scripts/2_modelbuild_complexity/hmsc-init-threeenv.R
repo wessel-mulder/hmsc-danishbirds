@@ -1,14 +1,23 @@
 rm(list = ls())
 
 # Define MCMC settings
-env_vars <- c('tmean_year','prec_year','dominant')
+env_vars <- c('tmean_year','prec_year',
+              'perc_fresh_saltwater','perc_urban','perc_cropland',
+              'perc_pasture','perc_forest','perc_grass_shrub')
+species <- c('warblers')
 chars <- c('all')
-atlases <- c('1','2','3')
+atlases <- list(
+  c('1','2','3'),
+  c('2','3')
+)
+
+
+name_of_dir <- c('_allenv_warblers_combinedatlas_') # atlas nr will be pasted at the ende 
 
 nChains <- 4
-thin <- 10
+thin <- 100
 nSamples <- 250
-transient <- 100000
+transient <- 50000
 verbose <- 100
 params <- list(
   nChains = nChains,
@@ -103,18 +112,21 @@ Y <- read.csv(file.path(input,'data/1_preprocessing/Y_occurrences/Y_occurrences.
 # remove sites without data 
 Y <- Y[row.names(Y) %in% sites_actual,]
 
+if(species == 'warblers'){
 # grab 13 warblers
-#genera <- c('Phylloscopus','Curruca','Sylvia','Acrocephalus','Hippolais','Locustella')
-#keep <- sapply(strsplit(colnames(Y),'_'),head,1) %in% genera
-#Y_warblers <- Y[,keep]
+genera <- c('Phylloscopus','Curruca','Sylvia','Acrocephalus','Hippolais','Locustella')
+keep <- sapply(strsplit(colnames(Y),'_'),head,1) %in% genera
+Y_warblers <- Y[,keep]
 
 # barred warbler is absent so we remove it 
-#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Curruca_nisoria"]
-#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Locustella_fluviatilis"]
-#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
+Y_warblers <- Y_warblers[colnames(Y_warblers) != "Curruca_nisoria"]
+Y_warblers <- Y_warblers[colnames(Y_warblers) != "Locustella_fluviatilis"]
+Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
 
 # phylloscopus also very absent in some of the thresholds now 
-#Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
+Y_warblers <- Y_warblers[colnames(Y_warblers) != "Phylloscopus_trochiloides"]
+Y <- Y_warblers
+}
 for(number in c('1','2','3')){
   Y_sub <- Y[rownames(Y)[grep(paste0("_",number,"$"), rownames(Y))],,drop=F]
   if(any(colSums(Y_sub, na.rm =T)<5)){
@@ -194,7 +206,7 @@ setdiff(rownames(pd_matrix),names(Y))
 # Define model types: 
 date <- format(Sys.time(), "%Y-%m-%d_%H-%M-%S")
 
-atlasnr <- c('1')
+#atlasnr <- c('1')
 # loop over different atlases 
 for(atlasnr in atlases){
 
@@ -208,6 +220,7 @@ for(atlasnr in atlases){
                                               Y = Design$lat))
   rownames(proj_xycoords_unique) <- unique(Design$site) 
   struc_space <- HmscRandomLevel(sData = proj_xycoords_unique, sMethod = "Full")
+  struc_space <- setPriors(struc_space,nfMin=5,nfMax=5) # set priors to limit latent factors
 
   # keep only atlas 1,2,3 
   pattern <- paste0("_(", paste(atlasnr, collapse = "|"), ")$")
@@ -274,7 +287,7 @@ for(atlasnr in atlases){
                            verbose = verbose,
                            engine="HPC")
     
-    dir_name <- paste0(date,'_threeenv_allspecies_landusepercs_atlas_',  paste(atlasnr, collapse = ""))
+    dir_name <- paste0(date,name_of_dir,paste(atlasnr, collapse = ""))
     dir.create(file.path(input,'tmp_rds',dir_name))
     
     init_file_path = file.path(input,'tmp_rds',dir_name, "init_file.rds")
@@ -322,9 +335,9 @@ for(atlasnr in atlases){
       )
       
       file.copy(script_path, backup_file, overwrite = TRUE)
-      message("✅ Script copied to: ", backup_file)
+      message("Script copied to: ", backup_file)
     } else {
-      warning("⚠️ Could not determine script path — are you running interactively?")
+      warning("Could not determine script path")
     }
   }
   
